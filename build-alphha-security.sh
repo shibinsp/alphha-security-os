@@ -562,10 +562,9 @@ EOF
     if [[ "$INCLUDE_KALI" == true ]]; then
         log_info "Adding Kali Linux repository..."
 
-        # Add Kali GPG key
-        chroot "$WORK_DIR/chroot" bash -c "
-            curl -fsSL $KALI_KEY_URL | gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg
-        "
+        # Download Kali GPG key from host (curl/gpg available on host, not in chroot yet)
+        mkdir -p "$WORK_DIR/chroot/usr/share/keyrings"
+        curl -fsSL "$KALI_KEY_URL" | gpg --dearmor -o "$WORK_DIR/chroot/usr/share/keyrings/kali-archive-keyring.gpg"
 
         # Add Kali repository with lower priority
         cat > "$WORK_DIR/chroot/etc/apt/sources.list.d/kali.list" << EOF
