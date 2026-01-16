@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Alphha Security OS Logo
+  Copyright (c) 2026 Alphha Team
+  Licensed under BSD-3-Clause
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff41;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00cc33;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="innerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d0d0d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="250" fill="#0a0a0a" stroke="#00ff41" stroke-width="4"/>
+
+  <!-- Shield outer -->
+  <path d="M256 56 L416 136 L416 256 C416 356 340 436 256 476 C172 436 96 356 96 256 L96 136 Z"
+        fill="url(#shieldGrad)"
+        stroke="#00ff41"
+        stroke-width="3"
+        filter="url(#glow)"/>
+
+  <!-- Shield inner -->
+  <path d="M256 86 L386 156 L386 256 C386 336 320 406 256 441 C192 406 126 336 126 256 L126 156 Z"
+        fill="url(#innerGrad)"/>
+
+  <!-- Letter A -->
+  <path d="M256 140 L320 340 L290 340 L278 300 L234 300 L222 340 L192 340 L256 140 Z
+           M268 270 L256 220 L244 270 Z"
+        fill="#00ff41"
+        filter="url(#glow)"/>
+
+  <!-- Lock symbol at bottom of shield -->
+  <rect x="231" y="350" width="50" height="40" rx="5" fill="#00ff41"/>
+  <path d="M241 350 L241 335 C241 320 256 310 271 335 L271 350"
+        fill="none"
+        stroke="#00ff41"
+        stroke-width="6"
+        stroke-linecap="round"/>
+
+  <!-- Binary code decorations -->
+  <text x="100" y="480" font-family="monospace" font-size="12" fill="#00ff4180">01001</text>
+  <text x="380" y="480" font-family="monospace" font-size="12" fill="#00ff4180">10110</text>
+
+  <!-- Circuit lines -->
+  <line x1="60" y1="256" x2="90" y2="256" stroke="#00ff41" stroke-width="2" opacity="0.5"/>
+  <line x1="422" y1="256" x2="452" y2="256" stroke="#00ff41" stroke-width="2" opacity="0.5"/>
+  <circle cx="55" cy="256" r="5" fill="#00ff41" opacity="0.5"/>
+  <circle cx="457" cy="256" r="5" fill="#00ff41" opacity="0.5"/>
+</svg>

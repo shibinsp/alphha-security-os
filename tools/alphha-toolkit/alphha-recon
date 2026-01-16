@@ -1,0 +1,342 @@
+#!/bin/bash
+#===============================================================================
+#
+#          FILE: alphha-recon
+#
+#         USAGE: alphha-recon <target> [OPTIONS]
+#
+#   DESCRIPTION: Automated reconnaissance workflow for Alphha Security OS
+#                Performs comprehensive information gathering on a target.
+#
+#       OPTIONS: -p, --passive    Passive reconnaissance only
+#                -a, --active     Include active scanning
+#                -w, --web        Web application focused
+#                -o, --output     Output directory
+#                -h, --help       Show help
+#
+#        AUTHOR: Alphha Team
+#     COPYRIGHT: Copyright (c) 2026 Alphha Team
+#       LICENSE: BSD-3-Clause
+#       VERSION: 1.0.0
+#
+#===============================================================================
+
+set -euo pipefail
+
+readonly VERSION="1.0.0"
+readonly SCRIPT_NAME="alphha-recon"
+readonly GREEN='\033[0;32m'
+readonly CYAN='\033[0;36m'
+readonly YELLOW='\033[0;33m'
+readonly RED='\033[0;31m'
+readonly NC='\033[0m'
+
+# Default options
+TARGET=""
+OUTPUT_DIR=""
+PASSIVE_ONLY=false
+ACTIVE_SCAN=false
+WEB_FOCUS=false
+
+log_info()    { echo -e "${GREEN}[+]${NC} $*"; }
+log_warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
+log_error()   { echo -e "${RED}[-]${NC} $*" >&2; }
+log_step()    { echo -e "${CYAN}[*]${NC} $*"; }
+
+print_banner() {
+    echo -e "${GREEN}"
+    cat << 'EOF'
+    _    _       _     _
+   / \  | |_ __ | |__ | |__   __ _
+  / _ \ | | '_ \| '_ \| '_ \ / _` |
+ / ___ \| | |_) | | | | | | | (_| |
+/_/   \_\_| .__/|_| |_|_| |_|\__,_|
+          |_|  Reconnaissance Tool
+EOF
+    echo -e "${NC}"
+    echo -e "${CYAN}Version: $VERSION${NC}"
+    echo ""
+}
+
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME <target> [OPTIONS]
+
+Automated reconnaissance workflow.
+
+ARGUMENTS:
+    target          Target domain, IP, or URL
+
+OPTIONS:
+    -p, --passive   Passive reconnaissance only (no direct contact)
+    -a, --active    Include active scanning (port scans, etc.)
+    -w, --web       Web application focused recon
+    -o, --output    Output directory (default: ./recon-<target>)
+    -h, --help      Show this help
+
+EXAMPLES:
+    $SCRIPT_NAME example.com
+    $SCRIPT_NAME example.com -p
+    $SCRIPT_NAME example.com -a -w -o /tmp/recon
+    $SCRIPT_NAME 192.168.1.0/24 -a
+
+COPYRIGHT:
+    Copyright (c) 2026 Alphha Team
+
+EOF
+    exit 0
+}
+
+parse_args() {
+    if [[ $# -eq 0 ]]; then
+        usage
+    fi
+
+    TARGET="$1"
+    shift
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -p|--passive)
+                PASSIVE_ONLY=true
+                shift
+                ;;
+            -a|--active)
+                ACTIVE_SCAN=true
+                shift
+                ;;
+            -w|--web)
+                WEB_FOCUS=true
+                shift
+                ;;
+            -o|--output)
+                OUTPUT_DIR="$2"
+                shift 2
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
+
+    # Set default output directory
+    if [[ -z "$OUTPUT_DIR" ]]; then
+        OUTPUT_DIR="./recon-${TARGET//\//-}"
+    fi
+}
+
+setup_output() {
+    log_step "Setting up output directory: $OUTPUT_DIR"
+    mkdir -p "$OUTPUT_DIR"/{dns,subdomains,ports,web,osint}
+}
+
+# DNS Enumeration
+dns_enum() {
+    log_step "Performing DNS enumeration..."
+
+    # Basic DNS records
+    if command -v dig &>/dev/null; then
+        log_info "Querying DNS records..."
+        dig +noall +answer "$TARGET" A >> "$OUTPUT_DIR/dns/a_records.txt" 2>/dev/null || true
+        dig +noall +answer "$TARGET" AAAA >> "$OUTPUT_DIR/dns/aaaa_records.txt" 2>/dev/null || true
+        dig +noall +answer "$TARGET" MX >> "$OUTPUT_DIR/dns/mx_records.txt" 2>/dev/null || true
+        dig +noall +answer "$TARGET" NS >> "$OUTPUT_DIR/dns/ns_records.txt" 2>/dev/null || true
+        dig +noall +answer "$TARGET" TXT >> "$OUTPUT_DIR/dns/txt_records.txt" 2>/dev/null || true
+        dig +noall +answer "$TARGET" SOA >> "$OUTPUT_DIR/dns/soa_records.txt" 2>/dev/null || true
+    fi
+
+    # DNSRecon
+    if command -v dnsrecon &>/dev/null; then
+        log_info "Running dnsrecon..."
+        dnsrecon -d "$TARGET" -t std > "$OUTPUT_DIR/dns/dnsrecon.txt" 2>/dev/null || true
+    fi
+
+    # DNSEnum
+    if command -v dnsenum &>/dev/null; then
+        log_info "Running dnsenum..."
+        dnsenum --noreverse "$TARGET" > "$OUTPUT_DIR/dns/dnsenum.txt" 2>/dev/null || true
+    fi
+}
+
+# Subdomain Enumeration
+subdomain_enum() {
+    log_step "Performing subdomain enumeration..."
+
+    # Sublist3r
+    if command -v sublist3r &>/dev/null; then
+        log_info "Running Sublist3r..."
+        sublist3r -d "$TARGET" -o "$OUTPUT_DIR/subdomains/sublist3r.txt" 2>/dev/null || true
+    fi
+
+    # Amass (passive)
+    if command -v amass &>/dev/null; then
+        log_info "Running Amass (passive)..."
+        amass enum -passive -d "$TARGET" -o "$OUTPUT_DIR/subdomains/amass.txt" 2>/dev/null || true
+    fi
+
+    # Combine and deduplicate
+    cat "$OUTPUT_DIR/subdomains/"*.txt 2>/dev/null | sort -u > "$OUTPUT_DIR/subdomains/all_subdomains.txt" || true
+    local count=$(wc -l < "$OUTPUT_DIR/subdomains/all_subdomains.txt" 2>/dev/null || echo "0")
+    log_info "Found $count unique subdomains"
+}
+
+# OSINT gathering
+osint_gather() {
+    log_step "Gathering OSINT..."
+
+    # TheHarvester
+    if command -v theHarvester &>/dev/null; then
+        log_info "Running theHarvester..."
+        theHarvester -d "$TARGET" -b all > "$OUTPUT_DIR/osint/theharvester.txt" 2>/dev/null || true
+    fi
+
+    # Whois
+    if command -v whois &>/dev/null; then
+        log_info "Running whois..."
+        whois "$TARGET" > "$OUTPUT_DIR/osint/whois.txt" 2>/dev/null || true
+    fi
+}
+
+# Port scanning
+port_scan() {
+    if [[ "$PASSIVE_ONLY" == true ]]; then
+        log_warn "Skipping port scan (passive mode)"
+        return
+    fi
+
+    log_step "Performing port scan..."
+
+    # Nmap
+    if command -v nmap &>/dev/null; then
+        log_info "Running Nmap scan..."
+
+        # Quick scan first
+        nmap -sS -sV -T4 --top-ports 1000 -oA "$OUTPUT_DIR/ports/nmap_quick" "$TARGET" 2>/dev/null || true
+
+        # Full scan if active mode
+        if [[ "$ACTIVE_SCAN" == true ]]; then
+            log_info "Running full Nmap scan..."
+            nmap -sS -sV -sC -p- -T4 -oA "$OUTPUT_DIR/ports/nmap_full" "$TARGET" 2>/dev/null || true
+        fi
+    fi
+
+    # Masscan for speed
+    if command -v masscan &>/dev/null && [[ "$ACTIVE_SCAN" == true ]]; then
+        log_info "Running Masscan..."
+        masscan "$TARGET" -p0-65535 --rate 1000 -oL "$OUTPUT_DIR/ports/masscan.txt" 2>/dev/null || true
+    fi
+}
+
+# Web reconnaissance
+web_recon() {
+    if [[ "$WEB_FOCUS" != true ]]; then
+        return
+    fi
+
+    log_step "Performing web reconnaissance..."
+
+    # WhatWeb
+    if command -v whatweb &>/dev/null; then
+        log_info "Running WhatWeb..."
+        whatweb -a 3 "https://$TARGET" > "$OUTPUT_DIR/web/whatweb.txt" 2>/dev/null || true
+        whatweb -a 3 "http://$TARGET" >> "$OUTPUT_DIR/web/whatweb.txt" 2>/dev/null || true
+    fi
+
+    # WAF detection
+    if command -v wafw00f &>/dev/null; then
+        log_info "Detecting WAF..."
+        wafw00f "https://$TARGET" > "$OUTPUT_DIR/web/waf.txt" 2>/dev/null || true
+    fi
+
+    # Directory brute-force
+    if command -v gobuster &>/dev/null && [[ "$ACTIVE_SCAN" == true ]]; then
+        log_info "Running Gobuster..."
+        gobuster dir -u "https://$TARGET" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt \
+            -o "$OUTPUT_DIR/web/gobuster.txt" -t 50 2>/dev/null || true
+    fi
+
+    # Nikto
+    if command -v nikto &>/dev/null && [[ "$ACTIVE_SCAN" == true ]]; then
+        log_info "Running Nikto..."
+        nikto -h "$TARGET" -o "$OUTPUT_DIR/web/nikto.txt" 2>/dev/null || true
+    fi
+}
+
+# Generate report
+generate_report() {
+    log_step "Generating report..."
+
+    local report="$OUTPUT_DIR/recon_report.md"
+
+    cat > "$report" << EOF
+# Reconnaissance Report
+## Target: $TARGET
+## Date: $(date)
+## Tool: Alphha Security OS - alphha-recon v$VERSION
+
+---
+
+## Summary
+
+EOF
+
+    # DNS summary
+    if [[ -d "$OUTPUT_DIR/dns" ]]; then
+        echo "### DNS Records" >> "$report"
+        echo "\`\`\`" >> "$report"
+        cat "$OUTPUT_DIR/dns/"*.txt 2>/dev/null | head -50 >> "$report" || true
+        echo "\`\`\`" >> "$report"
+        echo "" >> "$report"
+    fi
+
+    # Subdomains summary
+    if [[ -f "$OUTPUT_DIR/subdomains/all_subdomains.txt" ]]; then
+        local count=$(wc -l < "$OUTPUT_DIR/subdomains/all_subdomains.txt")
+        echo "### Subdomains ($count found)" >> "$report"
+        echo "\`\`\`" >> "$report"
+        head -20 "$OUTPUT_DIR/subdomains/all_subdomains.txt" >> "$report"
+        echo "\`\`\`" >> "$report"
+        echo "" >> "$report"
+    fi
+
+    # Ports summary
+    if [[ -f "$OUTPUT_DIR/ports/nmap_quick.nmap" ]]; then
+        echo "### Open Ports" >> "$report"
+        echo "\`\`\`" >> "$report"
+        grep "open" "$OUTPUT_DIR/ports/nmap_quick.nmap" >> "$report" || true
+        echo "\`\`\`" >> "$report"
+        echo "" >> "$report"
+    fi
+
+    log_info "Report saved to: $report"
+}
+
+# Main
+main() {
+    print_banner
+    parse_args "$@"
+
+    log_info "Target: $TARGET"
+    log_info "Output: $OUTPUT_DIR"
+    log_info "Mode: $([ "$PASSIVE_ONLY" == true ] && echo "Passive" || echo "Active")"
+    log_info "Web focus: $WEB_FOCUS"
+    echo ""
+
+    setup_output
+    dns_enum
+    subdomain_enum
+    osint_gather
+    port_scan
+    web_recon
+    generate_report
+
+    echo ""
+    log_info "Reconnaissance complete!"
+    log_info "Results saved to: $OUTPUT_DIR"
+}
+
+main "$@"

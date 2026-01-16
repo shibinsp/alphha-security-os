@@ -1,0 +1,366 @@
+#!/bin/bash
+#===============================================================================
+#
+#          FILE: alphha-clean
+#
+#         USAGE: alphha-clean [OPTIONS]
+#
+#   DESCRIPTION: Forensic cleanup and sanitization utility for Alphha Security OS
+#                Securely cleans traces and temporary files.
+#
+#        AUTHOR: Alphha Team
+#     COPYRIGHT: Copyright (c) 2026 Alphha Team
+#       LICENSE: BSD-3-Clause
+#       VERSION: 1.0.0
+#
+#===============================================================================
+
+set -euo pipefail
+
+readonly VERSION="1.0.0"
+readonly GREEN='\033[0;32m'
+readonly CYAN='\033[0;36m'
+readonly YELLOW='\033[0;33m'
+readonly RED='\033[0;31m'
+readonly NC='\033[0m'
+
+log_info()    { echo -e "${GREEN}[+]${NC} $*"; }
+log_warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
+log_error()   { echo -e "${RED}[-]${NC} $*" >&2; }
+log_step()    { echo -e "${CYAN}[*]${NC} $*"; }
+
+print_banner() {
+    echo -e "${GREEN}"
+    cat << 'EOF'
+    _    _       _     _
+   / \  | |_ __ | |__ | |__   __ _
+  / _ \ | | '_ \| '_ \| '_ \ / _` |
+ / ___ \| | |_) | | | | | | | (_| |
+/_/   \_\_| .__/|_| |_|_| |_|\__,_|
+          |_|  Cleanup Utility
+EOF
+    echo -e "${NC}"
+}
+
+usage() {
+    cat << EOF
+Usage: alphha-clean [OPTIONS]
+
+Forensic cleanup and sanitization.
+
+OPTIONS:
+    --logs          Clear system logs
+    --history       Clear shell history
+    --cache         Clear application caches
+    --tmp           Clear temporary files
+    --browser       Clear browser data
+    --ram           Clear RAM (requires root)
+    --secure        Use secure deletion (slower)
+    --all           Clean everything
+    --dry-run       Show what would be cleaned
+    -h, --help      Show help
+
+EXAMPLES:
+    alphha-clean --logs --history
+    alphha-clean --all --secure
+    alphha-clean --cache --tmp --dry-run
+
+WARNING:
+    This tool permanently deletes data. Use with caution!
+
+COPYRIGHT:
+    Copyright (c) 2026 Alphha Team
+
+EOF
+    exit 0
+}
+
+# Options
+CLEAN_LOGS=false
+CLEAN_HISTORY=false
+CLEAN_CACHE=false
+CLEAN_TMP=false
+CLEAN_BROWSER=false
+CLEAN_RAM=false
+SECURE_DELETE=false
+DRY_RUN=false
+
+parse_args() {
+    if [[ $# -eq 0 ]]; then
+        usage
+    fi
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --logs)
+                CLEAN_LOGS=true
+                shift
+                ;;
+            --history)
+                CLEAN_HISTORY=true
+                shift
+                ;;
+            --cache)
+                CLEAN_CACHE=true
+                shift
+                ;;
+            --tmp)
+                CLEAN_TMP=true
+                shift
+                ;;
+            --browser)
+                CLEAN_BROWSER=true
+                shift
+                ;;
+            --ram)
+                CLEAN_RAM=true
+                shift
+                ;;
+            --secure)
+                SECURE_DELETE=true
+                shift
+                ;;
+            --all)
+                CLEAN_LOGS=true
+                CLEAN_HISTORY=true
+                CLEAN_CACHE=true
+                CLEAN_TMP=true
+                CLEAN_BROWSER=true
+                CLEAN_RAM=true
+                shift
+                ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
+}
+
+secure_remove() {
+    local target="$1"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "  [DRY-RUN] Would delete: $target"
+        return
+    fi
+
+    if [[ ! -e "$target" ]]; then
+        return
+    fi
+
+    if [[ "$SECURE_DELETE" == true ]]; then
+        if command -v shred &>/dev/null; then
+            if [[ -f "$target" ]]; then
+                shred -vfz -n 3 "$target" 2>/dev/null && rm -f "$target"
+            elif [[ -d "$target" ]]; then
+                find "$target" -type f -exec shred -vfz -n 3 {} \; 2>/dev/null
+                rm -rf "$target"
+            fi
+        elif command -v srm &>/dev/null; then
+            srm -rfz "$target" 2>/dev/null
+        else
+            rm -rf "$target"
+        fi
+    else
+        rm -rf "$target"
+    fi
+}
+
+clean_logs() {
+    log_step "Cleaning system logs..."
+
+    local log_locations=(
+        "/var/log/*.log"
+        "/var/log/*.gz"
+        "/var/log/syslog*"
+        "/var/log/auth.log*"
+        "/var/log/kern.log*"
+        "/var/log/dmesg*"
+        "/var/log/messages*"
+        "/var/log/secure*"
+        "/var/log/wtmp"
+        "/var/log/btmp"
+        "/var/log/lastlog"
+        "/var/log/faillog"
+        "$HOME/.xsession-errors"
+    )
+
+    for loc in "${log_locations[@]}"; do
+        for file in $loc; do
+            if [[ -f "$file" ]]; then
+                secure_remove "$file"
+                log_info "Cleaned: $file"
+            fi
+        done
+    done
+
+    # Clear journal if systemd
+    if command -v journalctl &>/dev/null && [[ "$DRY_RUN" != true ]]; then
+        journalctl --rotate 2>/dev/null || true
+        journalctl --vacuum-time=1s 2>/dev/null || true
+        log_info "Cleaned journald"
+    fi
+}
+
+clean_history() {
+    log_step "Cleaning shell history..."
+
+    local history_files=(
+        "$HOME/.bash_history"
+        "$HOME/.zsh_history"
+        "$HOME/.history"
+        "$HOME/.python_history"
+        "$HOME/.mysql_history"
+        "$HOME/.psql_history"
+        "$HOME/.node_repl_history"
+        "$HOME/.lesshst"
+        "$HOME/.viminfo"
+    )
+
+    for file in "${history_files[@]}"; do
+        if [[ -f "$file" ]]; then
+            secure_remove "$file"
+            log_info "Cleaned: $file"
+        fi
+    done
+
+    # Clear current session history
+    if [[ "$DRY_RUN" != true ]]; then
+        history -c 2>/dev/null || true
+        export HISTSIZE=0
+    fi
+}
+
+clean_cache() {
+    log_step "Cleaning application caches..."
+
+    local cache_dirs=(
+        "$HOME/.cache"
+        "$HOME/.local/share/Trash"
+        "/tmp/*"
+        "/var/tmp/*"
+    )
+
+    for dir in "${cache_dirs[@]}"; do
+        if [[ -d "${dir%/*}" ]]; then
+            for item in $dir; do
+                if [[ -e "$item" ]]; then
+                    secure_remove "$item"
+                    log_info "Cleaned: $item"
+                fi
+            done
+        fi
+    done
+
+    # Clean package manager cache
+    if [[ "$DRY_RUN" != true ]]; then
+        apt-get clean 2>/dev/null || true
+        pip cache purge 2>/dev/null || true
+    fi
+}
+
+clean_tmp() {
+    log_step "Cleaning temporary files..."
+
+    local tmp_dirs=(
+        "/tmp"
+        "/var/tmp"
+        "$HOME/tmp"
+    )
+
+    for dir in "${tmp_dirs[@]}"; do
+        if [[ -d "$dir" ]]; then
+            find "$dir" -mindepth 1 -maxdepth 1 2>/dev/null | while read -r item; do
+                secure_remove "$item"
+                log_info "Cleaned: $item"
+            done
+        fi
+    done
+}
+
+clean_browser() {
+    log_step "Cleaning browser data..."
+
+    # Firefox
+    local firefox_dirs=(
+        "$HOME/.mozilla/firefox/*.default*/Cache"
+        "$HOME/.mozilla/firefox/*.default*/cache2"
+        "$HOME/.mozilla/firefox/*.default*/cookies.sqlite"
+        "$HOME/.mozilla/firefox/*.default*/places.sqlite"
+    )
+
+    # Chromium/Chrome
+    local chrome_dirs=(
+        "$HOME/.config/chromium/Default/Cache"
+        "$HOME/.config/chromium/Default/Cookies"
+        "$HOME/.config/chromium/Default/History"
+        "$HOME/.config/google-chrome/Default/Cache"
+        "$HOME/.config/google-chrome/Default/Cookies"
+        "$HOME/.config/google-chrome/Default/History"
+    )
+
+    for pattern in "${firefox_dirs[@]}" "${chrome_dirs[@]}"; do
+        for item in $pattern; do
+            if [[ -e "$item" ]]; then
+                secure_remove "$item"
+                log_info "Cleaned: $item"
+            fi
+        done
+    done
+}
+
+clean_ram() {
+    log_step "Cleaning RAM..."
+
+    if [[ $EUID -ne 0 ]]; then
+        log_warn "RAM cleaning requires root privileges"
+        return
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "  [DRY-RUN] Would sync and drop caches"
+        return
+    fi
+
+    # Sync and drop caches
+    sync
+    echo 3 > /proc/sys/vm/drop_caches
+
+    # Clear swap if present
+    if [[ -f /proc/swaps ]] && grep -q "partition\|file" /proc/swaps; then
+        swapoff -a && swapon -a 2>/dev/null || true
+    fi
+
+    log_info "RAM caches cleared"
+}
+
+main() {
+    print_banner
+    parse_args "$@"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        log_warn "DRY RUN MODE - No files will be deleted"
+    fi
+
+    echo ""
+
+    [[ "$CLEAN_LOGS" == true ]] && clean_logs
+    [[ "$CLEAN_HISTORY" == true ]] && clean_history
+    [[ "$CLEAN_CACHE" == true ]] && clean_cache
+    [[ "$CLEAN_TMP" == true ]] && clean_tmp
+    [[ "$CLEAN_BROWSER" == true ]] && clean_browser
+    [[ "$CLEAN_RAM" == true ]] && clean_ram
+
+    echo ""
+    log_info "Cleanup complete!"
+}
+
+main "$@"

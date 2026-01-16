@@ -1,0 +1,515 @@
+{
+  "$schema": "alpha-linux-vm-specification",
+  "version": "1.0.0",
+  "metadata": {
+    "name": "Alpha Linux",
+    "codename": "alpha",
+    "description": "Ultra-lightweight Debian-based Linux distribution optimized for VM deployment",
+    "maintainer": "Enterprise AI Team",
+    "build_date": "{{TIMESTAMP}}",
+    "base_distro": "debian",
+    "debian_version": "bookworm",
+    "architecture": "amd64"
+  },
+
+  "vm_specifications": {
+    "hypervisor_compatibility": ["qemu-kvm", "virtualbox", "vmware", "hyper-v", "proxmox"],
+    "minimum_requirements": {
+      "vcpu": 1,
+      "ram_mb": 256,
+      "disk_gb": 2
+    },
+    "recommended_requirements": {
+      "vcpu": 2,
+      "ram_mb": 512,
+      "disk_gb": 4
+    },
+    "vm_settings": {
+      "machine_type": "q35",
+      "boot_mode": "uefi",
+      "secure_boot": false,
+      "nested_virtualization": false,
+      "cpu_model": "host",
+      "balloon_driver": true,
+      "virtio_drivers": true
+    }
+  },
+
+  "disk_configuration": {
+    "format": "qcow2",
+    "compression": true,
+    "preallocation": "off",
+    "partition_table": "gpt",
+    "partitions": [
+      {
+        "name": "efi",
+        "mount_point": "/boot/efi",
+        "filesystem": "vfat",
+        "size_mb": 128,
+        "flags": ["boot", "esp"]
+      },
+      {
+        "name": "boot",
+        "mount_point": "/boot",
+        "filesystem": "ext4",
+        "size_mb": 256,
+        "options": ["noatime", "nodiratime"]
+      },
+      {
+        "name": "root",
+        "mount_point": "/",
+        "filesystem": "ext4",
+        "size_mb": "remaining",
+        "options": ["noatime", "nodiratime", "discard"]
+      }
+    ],
+    "swap": {
+      "enabled": false,
+      "use_zram": true,
+      "zram_size_percent": 25
+    }
+  },
+
+  "base_system": {
+    "debootstrap": {
+      "variant": "minbase",
+      "components": ["main"],
+      "exclude_packages": [
+        "nano",
+        "vim-tiny",
+        "whiptail",
+        "debconf-i18n",
+        "installation-report",
+        "keyboard-configuration",
+        "console-setup"
+      ]
+    },
+    "init_system": "systemd",
+    "kernel": {
+      "package": "linux-image-cloud-amd64",
+      "parameters": [
+        "quiet",
+        "loglevel=3",
+        "rd.systemd.show_status=auto",
+        "rd.udev.log_level=3",
+        "net.ifnames=0",
+        "biosdevname=0",
+        "mitigations=auto"
+      ]
+    },
+    "bootloader": {
+      "type": "systemd-boot",
+      "timeout": 0
+    }
+  },
+
+  "packages": {
+    "essential": [
+      "systemd",
+      "systemd-sysv",
+      "dbus",
+      "linux-image-cloud-amd64",
+      "systemd-boot",
+      "e2fsprogs",
+      "dosfstools"
+    ],
+    "networking": [
+      "systemd-networkd",
+      "systemd-resolved",
+      "iproute2",
+      "iputils-ping",
+      "openssh-server",
+      "ca-certificates",
+      "curl"
+    ],
+    "utilities": [
+      "busybox",
+      "procps",
+      "less",
+      "util-linux",
+      "coreutils",
+      "findutils",
+      "grep",
+      "gzip",
+      "tar"
+    ],
+    "security": [
+      "openssl",
+      "gnupg",
+      "apt-transport-https",
+      "sudo"
+    ],
+    "cloud_init": {
+      "enabled": true,
+      "packages": ["cloud-init", "cloud-guest-utils"]
+    },
+    "excluded_from_base": [
+      "rsyslog",
+      "logrotate",
+      "cron",
+      "anacron",
+      "man-db",
+      "manpages",
+      "info",
+      "install-info",
+      "doc-debian",
+      "debian-faq",
+      "vim*",
+      "nano",
+      "emacs*",
+      "perl",
+      "python*",
+      "gcc*",
+      "g++*",
+      "make",
+      "build-essential"
+    ]
+  },
+
+  "system_configuration": {
+    "hostname": "alpha",
+    "timezone": "UTC",
+    "locale": {
+      "default": "C.UTF-8",
+      "generate": ["C.UTF-8 UTF-8"]
+    },
+    "users": {
+      "root": {
+        "password_locked": true,
+        "shell": "/bin/bash"
+      },
+      "default_user": {
+        "name": "alpha",
+        "groups": ["sudo", "adm", "systemd-journal"],
+        "shell": "/bin/bash",
+        "password_auth": false,
+        "ssh_key_auth": true
+      }
+    }
+  },
+
+  "network_configuration": {
+    "manager": "systemd-networkd",
+    "dns_resolver": "systemd-resolved",
+    "default_interface": {
+      "name": "eth0",
+      "dhcp": true,
+      "ipv6": true
+    },
+    "networkd_config": {
+      "path": "/etc/systemd/network/10-eth0.network",
+      "content": [
+        "[Match]",
+        "Name=eth0",
+        "",
+        "[Network]",
+        "DHCP=yes",
+        "IPv6AcceptRA=yes",
+        "",
+        "[DHCPv4]",
+        "UseDNS=yes",
+        "UseNTP=yes",
+        "UseMTU=yes"
+      ]
+    }
+  },
+
+  "security_hardening": {
+    "ssh": {
+      "config_file": "/etc/ssh/sshd_config.d/hardening.conf",
+      "settings": {
+        "PermitRootLogin": "no",
+        "PasswordAuthentication": "no",
+        "PubkeyAuthentication": "yes",
+        "PermitEmptyPasswords": "no",
+        "ChallengeResponseAuthentication": "no",
+        "UsePAM": "yes",
+        "X11Forwarding": "no",
+        "AllowTcpForwarding": "no",
+        "AllowAgentForwarding": "no",
+        "AuthorizedKeysFile": ".ssh/authorized_keys",
+        "MaxAuthTries": 3,
+        "MaxSessions": 3,
+        "ClientAliveInterval": 300,
+        "ClientAliveCountMax": 2,
+        "LoginGraceTime": 30,
+        "Protocol": 2,
+        "Ciphers": "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+        "MACs": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+        "KexAlgorithms": "curve25519-sha256,curve25519-sha256@libssh.org"
+      }
+    },
+    "sysctl": {
+      "config_file": "/etc/sysctl.d/99-alpha-hardening.conf",
+      "parameters": {
+        "kernel.dmesg_restrict": 1,
+        "kernel.kptr_restrict": 2,
+        "kernel.yama.ptrace_scope": 1,
+        "kernel.randomize_va_space": 2,
+        "kernel.panic": 10,
+        "kernel.panic_on_oops": 1,
+        "net.ipv4.ip_forward": 0,
+        "net.ipv4.conf.all.send_redirects": 0,
+        "net.ipv4.conf.default.send_redirects": 0,
+        "net.ipv4.conf.all.accept_source_route": 0,
+        "net.ipv4.conf.default.accept_source_route": 0,
+        "net.ipv4.conf.all.accept_redirects": 0,
+        "net.ipv4.conf.default.accept_redirects": 0,
+        "net.ipv4.conf.all.secure_redirects": 0,
+        "net.ipv4.conf.default.secure_redirects": 0,
+        "net.ipv4.conf.all.log_martians": 1,
+        "net.ipv4.conf.default.log_martians": 1,
+        "net.ipv4.icmp_echo_ignore_broadcasts": 1,
+        "net.ipv4.icmp_ignore_bogus_error_responses": 1,
+        "net.ipv4.conf.all.rp_filter": 1,
+        "net.ipv4.conf.default.rp_filter": 1,
+        "net.ipv4.tcp_syncookies": 1,
+        "net.ipv4.tcp_timestamps": 0,
+        "net.ipv6.conf.all.accept_redirects": 0,
+        "net.ipv6.conf.default.accept_redirects": 0,
+        "net.ipv6.conf.all.accept_source_route": 0,
+        "net.ipv6.conf.default.accept_source_route": 0,
+        "fs.protected_hardlinks": 1,
+        "fs.protected_symlinks": 1,
+        "fs.suid_dumpable": 0
+      }
+    },
+    "filesystem": {
+      "disable_uncommon_filesystems": [
+        "cramfs",
+        "freevxfs",
+        "jffs2",
+        "hfs",
+        "hfsplus",
+        "squashfs",
+        "udf"
+      ],
+      "disable_uncommon_protocols": [
+        "dccp",
+        "sctp",
+        "rds",
+        "tipc"
+      ]
+    },
+    "apt": {
+      "config": {
+        "APT::Sandbox::Seccomp": 1,
+        "Acquire::AllowInsecureRepositories": false,
+        "Acquire::AllowDowngradeToInsecureRepositories": false
+      }
+    }
+  },
+
+  "optimization": {
+    "memory": {
+      "vm.swappiness": 10,
+      "vm.vfs_cache_pressure": 50,
+      "vm.dirty_ratio": 10,
+      "vm.dirty_background_ratio": 5
+    },
+    "disk_io": {
+      "scheduler": "none",
+      "read_ahead_kb": 256
+    },
+    "systemd_optimizations": {
+      "default_timeout_start_sec": "30s",
+      "default_timeout_stop_sec": "15s",
+      "journal": {
+        "storage": "volatile",
+        "max_use": "50M",
+        "runtime_max_use": "50M",
+        "compress": true
+      }
+    },
+    "services_to_disable": [
+      "apt-daily.service",
+      "apt-daily.timer",
+      "apt-daily-upgrade.service",
+      "apt-daily-upgrade.timer",
+      "man-db.timer",
+      "e2scrub_all.timer",
+      "fstrim.timer"
+    ],
+    "services_to_mask": [
+      "systemd-random-seed.service",
+      "systemd-timesyncd.service"
+    ],
+    "cleanup_scripts": {
+      "post_install": [
+        "apt-get clean",
+        "apt-get autoremove --purge -y",
+        "rm -rf /var/lib/apt/lists/*",
+        "rm -rf /var/cache/apt/*",
+        "rm -rf /var/log/*",
+        "rm -rf /tmp/*",
+        "rm -rf /var/tmp/*",
+        "rm -rf /usr/share/doc/*",
+        "rm -rf /usr/share/man/*",
+        "rm -rf /usr/share/info/*",
+        "rm -rf /usr/share/locale/*",
+        "rm -rf /usr/share/zoneinfo/*",
+        "find /var/log -type f -delete",
+        "truncate -s 0 /etc/machine-id"
+      ]
+    }
+  },
+
+  "cloud_init_config": {
+    "datasource_list": ["NoCloud", "ConfigDrive", "OpenStack", "Ec2", "None"],
+    "config_file": "/etc/cloud/cloud.cfg",
+    "modules_init": [
+      "migrator",
+      "seed_random",
+      "bootcmd",
+      "growpart",
+      "resizefs",
+      "set_hostname",
+      "update_hostname"
+    ],
+    "modules_config": [
+      "ssh",
+      "users-groups",
+      "write-files",
+      "runcmd"
+    ],
+    "modules_final": [
+      "package-update-upgrade-install",
+      "scripts-user",
+      "power-state-change"
+    ],
+    "default_user": {
+      "name": "alpha",
+      "lock_passwd": true,
+      "gecos": "Alpha Linux Default User",
+      "groups": ["sudo", "adm"],
+      "sudo": ["ALL=(ALL) NOPASSWD:ALL"],
+      "shell": "/bin/bash"
+    }
+  },
+
+  "build_scripts": {
+    "builder": "debootstrap",
+    "build_steps": [
+      {
+        "step": 1,
+        "name": "create_disk_image",
+        "commands": [
+          "qemu-img create -f qcow2 alpha-linux.qcow2 4G"
+        ]
+      },
+      {
+        "step": 2,
+        "name": "setup_loop_device",
+        "commands": [
+          "modprobe nbd max_part=8",
+          "qemu-nbd --connect=/dev/nbd0 alpha-linux.qcow2"
+        ]
+      },
+      {
+        "step": 3,
+        "name": "partition_disk",
+        "commands": [
+          "parted -s /dev/nbd0 mklabel gpt",
+          "parted -s /dev/nbd0 mkpart efi fat32 1MiB 129MiB",
+          "parted -s /dev/nbd0 set 1 esp on",
+          "parted -s /dev/nbd0 mkpart boot ext4 129MiB 385MiB",
+          "parted -s /dev/nbd0 mkpart root ext4 385MiB 100%"
+        ]
+      },
+      {
+        "step": 4,
+        "name": "format_partitions",
+        "commands": [
+          "mkfs.vfat -F32 /dev/nbd0p1",
+          "mkfs.ext4 -L boot /dev/nbd0p2",
+          "mkfs.ext4 -L root /dev/nbd0p3"
+        ]
+      },
+      {
+        "step": 5,
+        "name": "mount_filesystems",
+        "commands": [
+          "mkdir -p /mnt/alpha",
+          "mount /dev/nbd0p3 /mnt/alpha",
+          "mkdir -p /mnt/alpha/boot",
+          "mount /dev/nbd0p2 /mnt/alpha/boot",
+          "mkdir -p /mnt/alpha/boot/efi",
+          "mount /dev/nbd0p1 /mnt/alpha/boot/efi"
+        ]
+      },
+      {
+        "step": 6,
+        "name": "debootstrap_base",
+        "commands": [
+          "debootstrap --variant=minbase --arch=amd64 --components=main bookworm /mnt/alpha http://deb.debian.org/debian"
+        ]
+      },
+      {
+        "step": 7,
+        "name": "configure_chroot",
+        "commands": [
+          "mount --bind /dev /mnt/alpha/dev",
+          "mount --bind /dev/pts /mnt/alpha/dev/pts",
+          "mount --bind /proc /mnt/alpha/proc",
+          "mount --bind /sys /mnt/alpha/sys",
+          "mount --bind /run /mnt/alpha/run"
+        ]
+      },
+      {
+        "step": 8,
+        "name": "install_packages",
+        "commands": [
+          "chroot /mnt/alpha apt-get update",
+          "chroot /mnt/alpha apt-get install -y --no-install-recommends linux-image-cloud-amd64 systemd systemd-sysv systemd-boot dbus openssh-server sudo curl ca-certificates cloud-init iproute2"
+        ]
+      },
+      {
+        "step": 9,
+        "name": "configure_bootloader",
+        "commands": [
+          "chroot /mnt/alpha bootctl install --esp-path=/boot/efi"
+        ]
+      },
+      {
+        "step": 10,
+        "name": "cleanup_and_unmount",
+        "commands": [
+          "umount -R /mnt/alpha",
+          "qemu-nbd --disconnect /dev/nbd0"
+        ]
+      }
+    ]
+  },
+
+  "output": {
+    "formats": ["qcow2", "raw", "vmdk", "vdi", "ova"],
+    "compression": {
+      "qcow2": "zstd",
+      "raw": "gzip"
+    },
+    "checksums": ["sha256", "sha512"],
+    "naming_convention": "alpha-linux-{{VERSION}}-{{ARCH}}-{{FORMAT}}"
+  },
+
+  "testing": {
+    "boot_test": {
+      "timeout_seconds": 60,
+      "expected_services": ["sshd", "systemd-networkd", "cloud-init"]
+    },
+    "security_scan": {
+      "tools": ["lynis", "openscap"],
+      "minimum_score": 80
+    },
+    "size_validation": {
+      "compressed_max_mb": 200,
+      "uncompressed_max_mb": 500
+    }
+  },
+
+  "documentation": {
+    "readme": true,
+    "changelog": true,
+    "release_notes": true,
+    "quickstart_guide": true
+  }
+}

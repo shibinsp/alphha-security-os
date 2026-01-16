@@ -1,0 +1,89 @@
+# Alphha Security OS GRUB Theme
+# Copyright (c) 2026 Alphha Team
+
+# Global properties
+title-text: "Alphha Security OS"
+title-font: "DejaVu Sans Bold 24"
+title-color: "#00ff41"
+message-font: "DejaVu Sans Regular 12"
+message-color: "#cccccc"
+message-bg-color: "#0a0a0a"
+desktop-image: "background.png"
+desktop-color: "#0a0a0a"
+terminal-font: "DejaVu Sans Mono Regular 14"
+terminal-box: "terminal_box_*.png"
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+terminal-border: "0"
+
+# Boot menu
++ boot_menu {
+    left = 30%
+    width = 40%
+    top = 35%
+    height = 40%
+    item_font = "DejaVu Sans Regular 16"
+    item_color = "#cccccc"
+    selected_item_font = "DejaVu Sans Bold 16"
+    selected_item_color = "#00ff41"
+    selected_item_pixmap_style = "select_*.png"
+    icon_width = 32
+    icon_height = 32
+    item_icon_space = 20
+    item_height = 40
+    item_padding = 10
+    item_spacing = 5
+    scrollbar = true
+    scrollbar_width = 10
+    scrollbar_thumb = "scrollbar_thumb.png"
+}
+
+# Progress bar
++ progress_bar {
+    id = "__timeout__"
+    left = 30%
+    width = 40%
+    top = 80%
+    height = 20
+    text_color = "#00ff41"
+    fg_color = "#00ff41"
+    bg_color = "#1a1a1a"
+    border_color = "#00ff41"
+    text = "@TIMEOUT_NOTIFICATION_MIDDLE@"
+}
+
+# Label for OS name
++ label {
+    left = 0
+    top = 10%
+    width = 100%
+    align = "center"
+    id = "__title__"
+    text = "Alphha Security OS"
+    font = "DejaVu Sans Bold 28"
+    color = "#00ff41"
+}
+
+# Label for version
++ label {
+    left = 0
+    top = 15%
+    width = 100%
+    align = "center"
+    text = "v1.0.0 (Sentinel)"
+    font = "DejaVu Sans Regular 14"
+    color = "#888888"
+}
+
+# Footer
++ label {
+    left = 0
+    top = 95%
+    width = 100%
+    align = "center"
+    text = "Use arrow keys to select, Enter to boot"
+    font = "DejaVu Sans Regular 12"
+    color = "#666666"
+}

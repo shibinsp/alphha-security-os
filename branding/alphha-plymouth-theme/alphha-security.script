@@ -1,0 +1,84 @@
+/*
+ * Alphha Security OS Plymouth Theme Script
+ * Copyright (c) 2026 Alphha Team
+ * Licensed under BSD-3-Clause
+ */
+
+/* Window dimensions */
+Window.GetWidth = fun() { return Plymouth.GetWidth(); };
+Window.GetHeight = fun() { return Plymouth.GetHeight(); };
+
+/* Background color - dark cyber theme */
+Window.SetBackgroundTopColor(0.04, 0.04, 0.04);
+Window.SetBackgroundBottomColor(0.02, 0.02, 0.02);
+
+/* Load logo image */
+logo.image = Image("logo.png");
+logo.sprite = Sprite(logo.image);
+
+/* Center the logo */
+logo.x = Window.GetWidth() / 2 - logo.image.GetWidth() / 2;
+logo.y = Window.GetHeight() / 2 - logo.image.GetHeight() / 2 - 50;
+logo.sprite.SetPosition(logo.x, logo.y, 1);
+
+/* Text styling */
+text_sprite = Sprite();
+text_sprite.SetPosition(Window.GetWidth() / 2 - 100, Window.GetHeight() / 2 + 80, 1);
+
+/* Progress bar */
+progress_box.image = Image("progress_box.png");
+progress_box.sprite = Sprite(progress_box.image);
+progress_box.x = Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
+progress_box.y = Window.GetHeight() / 2 + 120;
+progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 0);
+
+progress_bar.original_image = Image("progress_bar.png");
+progress_bar.sprite = Sprite();
+progress_bar.x = Window.GetWidth() / 2 - progress_bar.original_image.GetWidth() / 2;
+progress_bar.y = Window.GetHeight() / 2 + 120;
+progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
+
+/* Progress callback */
+fun progress_callback(duration, progress) {
+    if (progress_bar.image.GetWidth() != Math.Int(progress_bar.original_image.GetWidth() * progress)) {
+        progress_bar.image = progress_bar.original_image.Scale(
+            Math.Int(progress_bar.original_image.GetWidth() * progress),
+            progress_bar.original_image.GetHeight()
+        );
+        progress_bar.sprite.SetImage(progress_bar.image);
+    }
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+/* Message display */
+message_sprite = Sprite();
+message_sprite.SetPosition(Window.GetWidth() / 2 - 150, Window.GetHeight() - 50, 1);
+
+fun message_callback(text) {
+    my_image = Image.Text(text, 0, 1, 0.25);  /* Green text */
+    message_sprite.SetImage(my_image);
+}
+Plymouth.SetMessageFunction(message_callback);
+
+/* Password prompt */
+fun display_password_callback(prompt, bullets) {
+    bullet_image = Image("bullet.png");
+
+    for (i = 0; i < bullets; i++) {
+        bullet[i].sprite = Sprite(bullet_image);
+        bullet[i].x = Window.GetWidth() / 2 - bullets * 15 / 2 + i * 15;
+        bullet[i].y = Window.GetHeight() / 2 + 160;
+        bullet[i].sprite.SetPosition(bullet[i].x, bullet[i].y, 1);
+    }
+
+    prompt_image = Image.Text(prompt, 0.8, 0.8, 0.8);
+    prompt_sprite = Sprite(prompt_image);
+    prompt_sprite.SetPosition(Window.GetWidth() / 2 - prompt_image.GetWidth() / 2, Window.GetHeight() / 2 + 140, 1);
+}
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+
+/* Quit callback */
+fun quit_callback() {
+    logo.sprite.SetOpacity(0);
+}
+Plymouth.SetQuitFunction(quit_callback);

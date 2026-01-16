@@ -1,0 +1,329 @@
+#!/bin/bash
+#===============================================================================
+#
+#          FILE: alphha-vuln
+#
+#         USAGE: alphha-vuln <target> [OPTIONS]
+#
+#   DESCRIPTION: Vulnerability assessment wrapper for Alphha Security OS
+#                Performs comprehensive vulnerability scanning on targets.
+#
+#       OPTIONS: -p, --ports      Specific ports to scan
+#                -t, --type       Scan type (quick|full|web|network)
+#                -o, --output     Output directory
+#                -h, --help       Show help
+#
+#        AUTHOR: Alphha Team
+#     COPYRIGHT: Copyright (c) 2026 Alphha Team
+#       LICENSE: BSD-3-Clause
+#       VERSION: 1.0.0
+#
+#===============================================================================
+
+set -euo pipefail
+
+readonly VERSION="1.0.0"
+readonly SCRIPT_NAME="alphha-vuln"
+readonly GREEN='\033[0;32m'
+readonly CYAN='\033[0;36m'
+readonly YELLOW='\033[0;33m'
+readonly RED='\033[0;31m'
+readonly NC='\033[0m'
+
+# Default options
+TARGET=""
+OUTPUT_DIR=""
+PORTS=""
+SCAN_TYPE="quick"
+
+log_info()    { echo -e "${GREEN}[+]${NC} $*"; }
+log_warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
+log_error()   { echo -e "${RED}[-]${NC} $*" >&2; }
+log_step()    { echo -e "${CYAN}[*]${NC} $*"; }
+
+print_banner() {
+    echo -e "${GREEN}"
+    cat << 'EOF'
+    _    _       _     _
+   / \  | |_ __ | |__ | |__   __ _
+  / _ \ | | '_ \| '_ \| '_ \ / _` |
+ / ___ \| | |_) | | | | | | | (_| |
+/_/   \_\_| .__/|_| |_|_| |_|\__,_|
+          |_|  Vulnerability Scanner
+EOF
+    echo -e "${NC}"
+    echo -e "${CYAN}Version: $VERSION${NC}"
+    echo ""
+}
+
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME <target> [OPTIONS]
+
+Vulnerability assessment tool.
+
+ARGUMENTS:
+    target              Target IP, hostname, or URL
+
+OPTIONS:
+    -p, --ports         Specific ports to scan (e.g., 80,443,8080)
+    -t, --type          Scan type:
+                        - quick:   Fast scan with common vulnerabilities
+                        - full:    Comprehensive scan (slower)
+                        - web:     Web application focused
+                        - network: Network services focused
+    -o, --output        Output directory
+    -h, --help          Show this help
+
+EXAMPLES:
+    $SCRIPT_NAME 192.168.1.1
+    $SCRIPT_NAME example.com -t web
+    $SCRIPT_NAME 10.0.0.0/24 -t network -o /tmp/scan
+
+COPYRIGHT:
+    Copyright (c) 2026 Alphha Team
+
+EOF
+    exit 0
+}
+
+parse_args() {
+    if [[ $# -eq 0 ]]; then
+        usage
+    fi
+
+    TARGET="$1"
+    shift
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -p|--ports)
+                PORTS="$2"
+                shift 2
+                ;;
+            -t|--type)
+                SCAN_TYPE="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_DIR="$2"
+                shift 2
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
+
+    if [[ -z "$OUTPUT_DIR" ]]; then
+        OUTPUT_DIR="./vuln-${TARGET//\//-}-$(date +%Y%m%d_%H%M%S)"
+    fi
+}
+
+setup_output() {
+    log_step "Setting up output directory: $OUTPUT_DIR"
+    mkdir -p "$OUTPUT_DIR"/{nmap,nikto,nuclei,reports}
+}
+
+# Nmap vulnerability scan
+nmap_vuln_scan() {
+    log_step "Running Nmap vulnerability scan..."
+
+    if ! command -v nmap &>/dev/null; then
+        log_error "Nmap not installed"
+        return 1
+    fi
+
+    local port_arg=""
+    if [[ -n "$PORTS" ]]; then
+        port_arg="-p $PORTS"
+    fi
+
+    case "$SCAN_TYPE" in
+        quick)
+            log_info "Quick vulnerability scan..."
+            nmap -sV --script vuln --top-ports 100 $port_arg -oA "$OUTPUT_DIR/nmap/vuln_quick" "$TARGET" || true
+            ;;
+        full)
+            log_info "Full vulnerability scan..."
+            nmap -sV --script "vuln,exploit,auth" -p- $port_arg -oA "$OUTPUT_DIR/nmap/vuln_full" "$TARGET" || true
+            ;;
+        network)
+            log_info "Network vulnerability scan..."
+            nmap -sV --script "smb-vuln-*,ssh-*,ftp-*,rdp-*" $port_arg -oA "$OUTPUT_DIR/nmap/vuln_network" "$TARGET" || true
+            ;;
+        *)
+            nmap -sV --script vuln $port_arg -oA "$OUTPUT_DIR/nmap/vuln_default" "$TARGET" || true
+            ;;
+    esac
+}
+
+# Nikto web scan
+nikto_scan() {
+    if [[ "$SCAN_TYPE" != "web" && "$SCAN_TYPE" != "full" ]]; then
+        return
+    fi
+
+    log_step "Running Nikto web scan..."
+
+    if ! command -v nikto &>/dev/null; then
+        log_warn "Nikto not installed, skipping..."
+        return
+    fi
+
+    nikto -h "$TARGET" -o "$OUTPUT_DIR/nikto/nikto_scan.txt" -Format txt || true
+    nikto -h "$TARGET" -o "$OUTPUT_DIR/nikto/nikto_scan.html" -Format htm || true
+}
+
+# Nuclei scan
+nuclei_scan() {
+    log_step "Running Nuclei vulnerability scan..."
+
+    if ! command -v nuclei &>/dev/null; then
+        log_warn "Nuclei not installed, skipping..."
+        return
+    fi
+
+    local severity="medium,high,critical"
+    if [[ "$SCAN_TYPE" == "full" ]]; then
+        severity="low,medium,high,critical"
+    fi
+
+    nuclei -u "$TARGET" -severity "$severity" -o "$OUTPUT_DIR/nuclei/nuclei_results.txt" || true
+}
+
+# SSL/TLS scan
+ssl_scan() {
+    log_step "Running SSL/TLS scan..."
+
+    # testssl.sh
+    if command -v testssl.sh &>/dev/null; then
+        log_info "Running testssl.sh..."
+        testssl.sh --html "$OUTPUT_DIR/reports/testssl.html" "$TARGET" || true
+    elif command -v testssl &>/dev/null; then
+        testssl --html "$OUTPUT_DIR/reports/testssl.html" "$TARGET" || true
+    fi
+
+    # sslscan
+    if command -v sslscan &>/dev/null; then
+        log_info "Running sslscan..."
+        sslscan "$TARGET" > "$OUTPUT_DIR/reports/sslscan.txt" || true
+    fi
+}
+
+# SQLMap scan (web only)
+sqlmap_scan() {
+    if [[ "$SCAN_TYPE" != "web" ]]; then
+        return
+    fi
+
+    log_step "Running SQLMap scan..."
+
+    if ! command -v sqlmap &>/dev/null; then
+        log_warn "SQLMap not installed, skipping..."
+        return
+    fi
+
+    # Basic crawl and test
+    sqlmap -u "$TARGET" --batch --crawl=2 --level=2 --risk=2 \
+        --output-dir="$OUTPUT_DIR/sqlmap" || true
+}
+
+# Generate summary report
+generate_report() {
+    log_step "Generating vulnerability report..."
+
+    local report="$OUTPUT_DIR/reports/vuln_report.md"
+
+    cat > "$report" << EOF
+# Vulnerability Assessment Report
+## Target: $TARGET
+## Scan Type: $SCAN_TYPE
+## Date: $(date)
+## Tool: Alphha Security OS - alphha-vuln v$VERSION
+
+---
+
+## Executive Summary
+
+This report contains the results of a vulnerability assessment performed
+against the target system(s).
+
+---
+
+## Findings
+
+EOF
+
+    # Parse Nmap results
+    if ls "$OUTPUT_DIR/nmap/"*.nmap &>/dev/null; then
+        echo "### Nmap Vulnerability Scan Results" >> "$report"
+        echo "\`\`\`" >> "$report"
+        grep -E "(VULNERABLE|CVE-|exploit)" "$OUTPUT_DIR/nmap/"*.nmap 2>/dev/null | head -50 >> "$report" || echo "No critical vulnerabilities detected." >> "$report"
+        echo "\`\`\`" >> "$report"
+        echo "" >> "$report"
+    fi
+
+    # Parse Nuclei results
+    if [[ -f "$OUTPUT_DIR/nuclei/nuclei_results.txt" ]]; then
+        echo "### Nuclei Scan Results" >> "$report"
+        echo "\`\`\`" >> "$report"
+        head -30 "$OUTPUT_DIR/nuclei/nuclei_results.txt" >> "$report" || true
+        echo "\`\`\`" >> "$report"
+        echo "" >> "$report"
+    fi
+
+    # Parse Nikto results
+    if [[ -f "$OUTPUT_DIR/nikto/nikto_scan.txt" ]]; then
+        echo "### Nikto Web Scan Results" >> "$report"
+        echo "\`\`\`" >> "$report"
+        grep -E "^\+" "$OUTPUT_DIR/nikto/nikto_scan.txt" | head -20 >> "$report" || true
+        echo "\`\`\`" >> "$report"
+        echo "" >> "$report"
+    fi
+
+    echo "---" >> "$report"
+    echo "" >> "$report"
+    echo "## Recommendations" >> "$report"
+    echo "" >> "$report"
+    echo "1. Review all identified vulnerabilities" >> "$report"
+    echo "2. Prioritize remediation based on severity" >> "$report"
+    echo "3. Apply security patches where applicable" >> "$report"
+    echo "4. Implement network segmentation" >> "$report"
+    echo "5. Enable logging and monitoring" >> "$report"
+    echo "" >> "$report"
+    echo "---" >> "$report"
+    echo "" >> "$report"
+    echo "*Report generated by Alphha Security OS*" >> "$report"
+
+    log_info "Report saved to: $report"
+}
+
+# Main
+main() {
+    print_banner
+    parse_args "$@"
+
+    log_info "Target: $TARGET"
+    log_info "Scan Type: $SCAN_TYPE"
+    log_info "Output: $OUTPUT_DIR"
+    echo ""
+
+    setup_output
+    nmap_vuln_scan
+    nikto_scan
+    nuclei_scan
+    ssl_scan
+    sqlmap_scan
+    generate_report
+
+    echo ""
+    log_info "Vulnerability assessment complete!"
+    log_info "Results saved to: $OUTPUT_DIR"
+}
+
+main "$@"

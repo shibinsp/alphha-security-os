@@ -1,0 +1,709 @@
+{
+  "$schema": "alpha-linux-laptop-specification",
+  "version": "2.0.0",
+  "metadata": {
+    "name": "Alpha Linux",
+    "codename": "alpha-laptop",
+    "description": "Ultra-lightweight Debian-based Linux distribution for bare-metal laptop/desktop installation",
+    "maintainer": "Enterprise AI Team",
+    "build_date": "{{TIMESTAMP}}",
+    "base_distro": "debian",
+    "debian_version": "bookworm",
+    "architecture": ["amd64", "arm64"],
+    "target": "bare-metal"
+  },
+
+  "build_variants": {
+    "minimal": {
+      "description": "CLI-only with full hardware support",
+      "estimated_size_mb": 500,
+      "desktop": false
+    },
+    "sway": {
+      "description": "Lightweight Wayland compositor (tiling WM)",
+      "estimated_size_mb": 800,
+      "desktop": "sway"
+    },
+    "xfce": {
+      "description": "Traditional lightweight desktop",
+      "estimated_size_mb": 1200,
+      "desktop": "xfce"
+    },
+    "gnome-minimal": {
+      "description": "GNOME core without extras",
+      "estimated_size_mb": 2000,
+      "desktop": "gnome"
+    }
+  },
+
+  "hardware_requirements": {
+    "minimum": {
+      "cpu": "x86_64 with SSE4.2",
+      "ram_gb": 2,
+      "disk_gb": 10,
+      "display": "1024x768"
+    },
+    "recommended": {
+      "cpu": "x86_64 quad-core",
+      "ram_gb": 4,
+      "disk_gb": 20,
+      "display": "1920x1080"
+    }
+  },
+
+  "iso_configuration": {
+    "type": "hybrid",
+    "boot_modes": ["bios", "uefi"],
+    "installer": "custom-tui",
+    "live_session": true,
+    "compression": "xz",
+    "squashfs_compression": "zstd"
+  },
+
+  "disk_configuration": {
+    "partition_schemes": {
+      "uefi_recommended": {
+        "partition_table": "gpt",
+        "partitions": [
+          {
+            "name": "efi",
+            "mount_point": "/boot/efi",
+            "filesystem": "vfat",
+            "size_mb": 512,
+            "flags": ["boot", "esp"]
+          },
+          {
+            "name": "boot",
+            "mount_point": "/boot",
+            "filesystem": "ext4",
+            "size_mb": 1024,
+            "options": ["noatime"]
+          },
+          {
+            "name": "root",
+            "mount_point": "/",
+            "filesystem": "btrfs",
+            "size_mb": "remaining",
+            "subvolumes": ["@", "@home", "@snapshots"],
+            "options": ["compress=zstd:1", "noatime", "ssd", "discard=async"]
+          }
+        ]
+      },
+      "bios_legacy": {
+        "partition_table": "msdos",
+        "partitions": [
+          {
+            "name": "boot",
+            "mount_point": "/boot",
+            "filesystem": "ext4",
+            "size_mb": 1024,
+            "flags": ["boot"]
+          },
+          {
+            "name": "root",
+            "mount_point": "/",
+            "filesystem": "ext4",
+            "size_mb": "remaining",
+            "options": ["noatime", "discard"]
+          }
+        ]
+      },
+      "encrypted": {
+        "partition_table": "gpt",
+        "encryption": {
+          "type": "luks2",
+          "cipher": "aes-xts-plain64",
+          "key_size": 512,
+          "hash": "sha512"
+        },
+        "partitions": [
+          {
+            "name": "efi",
+            "mount_point": "/boot/efi",
+            "filesystem": "vfat",
+            "size_mb": 512,
+            "encrypted": false
+          },
+          {
+            "name": "boot",
+            "mount_point": "/boot",
+            "filesystem": "ext4",
+            "size_mb": 1024,
+            "encrypted": false
+          },
+          {
+            "name": "root",
+            "mount_point": "/",
+            "filesystem": "btrfs",
+            "size_mb": "remaining",
+            "encrypted": true
+          }
+        ]
+      }
+    },
+    "swap": {
+      "type": "zram",
+      "zram_fraction": 0.5,
+      "compression_algorithm": "zstd",
+      "hibernate_file": {
+        "enabled": false,
+        "size_percent": 100
+      }
+    }
+  },
+
+  "base_system": {
+    "debootstrap": {
+      "variant": "minbase",
+      "components": ["main", "contrib", "non-free", "non-free-firmware"]
+    },
+    "init_system": "systemd",
+    "kernel": {
+      "package": "linux-image-amd64",
+      "headers": "linux-headers-amd64",
+      "parameters": [
+        "quiet",
+        "splash",
+        "loglevel=3",
+        "rd.systemd.show_status=auto",
+        "rd.udev.log_level=3",
+        "mitigations=auto",
+        "nowatchdog",
+        "nmi_watchdog=0"
+      ]
+    },
+    "bootloader": {
+      "uefi": {
+        "type": "systemd-boot",
+        "timeout": 3,
+        "editor": false
+      },
+      "bios": {
+        "type": "grub",
+        "timeout": 3
+      }
+    },
+    "initramfs": {
+      "generator": "initramfs-tools",
+      "modules": ["btrfs", "dm-crypt", "nvme", "ahci", "xhci_pci"],
+      "compression": "zstd"
+    }
+  },
+
+  "packages": {
+    "core_system": [
+      "systemd",
+      "systemd-sysv",
+      "systemd-timesyncd",
+      "dbus",
+      "dbus-user-session",
+      "linux-image-amd64",
+      "linux-headers-amd64",
+      "systemd-boot",
+      "grub-efi-amd64",
+      "grub-pc",
+      "efibootmgr",
+      "e2fsprogs",
+      "btrfs-progs",
+      "dosfstools",
+      "initramfs-tools",
+      "cryptsetup",
+      "lvm2"
+    ],
+
+    "firmware": {
+      "common": [
+        "firmware-linux-free",
+        "firmware-linux-nonfree",
+        "firmware-misc-nonfree",
+        "amd64-microcode",
+        "intel-microcode"
+      ],
+      "wifi": [
+        "firmware-iwlwifi",
+        "firmware-realtek",
+        "firmware-atheros",
+        "firmware-brcm80211",
+        "firmware-mediatek"
+      ],
+      "bluetooth": [
+        "firmware-iwlwifi",
+        "firmware-realtek",
+        "bluez",
+        "bluez-tools"
+      ],
+      "graphics": {
+        "intel": [
+          "intel-media-va-driver",
+          "intel-gpu-tools",
+          "libva-drm2",
+          "libva-x11-2",
+          "vainfo"
+        ],
+        "amd": [
+          "firmware-amd-graphics",
+          "libdrm-amdgpu1",
+          "mesa-va-drivers",
+          "mesa-vulkan-drivers",
+          "radeontop"
+        ],
+        "nvidia": {
+          "open_source": [
+            "nvidia-driver",
+            "nvidia-vaapi-driver"
+          ],
+          "proprietary": [
+            "nvidia-driver",
+            "nvidia-cuda-toolkit"
+          ]
+        }
+      }
+    },
+
+    "networking": [
+      "networkmanager",
+      "network-manager-gnome",
+      "wpasupplicant",
+      "wireless-tools",
+      "iw",
+      "rfkill",
+      "iproute2",
+      "iputils-ping",
+      "openssh-client",
+      "openssh-server",
+      "ca-certificates",
+      "curl",
+      "wget"
+    ],
+
+    "audio": [
+      "pipewire",
+      "pipewire-alsa",
+      "pipewire-pulse",
+      "pipewire-jack",
+      "wireplumber",
+      "alsa-utils",
+      "alsa-firmware-loaders",
+      "sof-firmware"
+    ],
+
+    "power_management": [
+      "tlp",
+      "tlp-rdw",
+      "acpi",
+      "acpid",
+      "powertop",
+      "thermald",
+      "upower"
+    ],
+
+    "input_devices": [
+      "libinput-tools",
+      "xdg-user-dirs"
+    ],
+
+    "utilities": [
+      "sudo",
+      "polkit",
+      "rtkit",
+      "udisks2",
+      "gvfs",
+      "gvfs-backends",
+      "file-roller",
+      "htop",
+      "btop",
+      "neofetch",
+      "tree",
+      "unzip",
+      "p7zip-full",
+      "rsync",
+      "git",
+      "vim",
+      "nano",
+      "bash-completion",
+      "man-db",
+      "locales"
+    ],
+
+    "security": [
+      "apparmor",
+      "apparmor-utils",
+      "firejail",
+      "openssl",
+      "gnupg",
+      "apt-transport-https"
+    ],
+
+    "fonts": [
+      "fonts-dejavu-core",
+      "fonts-liberation2",
+      "fonts-noto-core",
+      "fonts-noto-color-emoji",
+      "fontconfig"
+    ],
+
+    "desktop_sway": {
+      "description": "Minimal Wayland tiling compositor",
+      "packages": [
+        "sway",
+        "swaylock",
+        "swayidle",
+        "swaybg",
+        "waybar",
+        "wofi",
+        "foot",
+        "mako-notifier",
+        "kanshi",
+        "wl-clipboard",
+        "grim",
+        "slurp",
+        "wdisplays",
+        "xdg-desktop-portal-wlr",
+        "xwayland",
+        "thunar",
+        "imv",
+        "mpv",
+        "firefox-esr"
+      ]
+    },
+
+    "desktop_xfce": {
+      "description": "Lightweight traditional desktop",
+      "packages": [
+        "xfce4",
+        "xfce4-terminal",
+        "xfce4-whiskermenu-plugin",
+        "xfce4-pulseaudio-plugin",
+        "xfce4-notifyd",
+        "xfce4-power-manager",
+        "xfce4-screenshooter",
+        "xfce4-taskmanager",
+        "lightdm",
+        "lightdm-gtk-greeter",
+        "lightdm-gtk-greeter-settings",
+        "thunar",
+        "thunar-archive-plugin",
+        "thunar-volman",
+        "ristretto",
+        "mousepad",
+        "parole",
+        "firefox-esr",
+        "xorg",
+        "xserver-xorg-input-libinput"
+      ]
+    },
+
+    "desktop_gnome_minimal": {
+      "description": "GNOME core without bloat",
+      "packages": [
+        "gnome-shell",
+        "gnome-session",
+        "gnome-control-center",
+        "gnome-terminal",
+        "gnome-tweaks",
+        "nautilus",
+        "gdm3",
+        "gnome-keyring",
+        "gnome-disk-utility",
+        "eog",
+        "evince",
+        "gedit",
+        "firefox-esr",
+        "xdg-desktop-portal-gnome"
+      ]
+    }
+  },
+
+  "system_configuration": {
+    "hostname": "alpha",
+    "timezone": "UTC",
+    "locale": {
+      "default": "en_US.UTF-8",
+      "generate": [
+        "en_US.UTF-8 UTF-8",
+        "C.UTF-8 UTF-8"
+      ]
+    },
+    "keyboard": {
+      "model": "pc105",
+      "layout": "us",
+      "variant": "",
+      "options": "ctrl:nocaps"
+    },
+    "users": {
+      "root": {
+        "password_locked": true,
+        "shell": "/bin/bash"
+      },
+      "default_user": {
+        "name": "alpha",
+        "groups": [
+          "sudo",
+          "adm",
+          "cdrom",
+          "floppy",
+          "audio",
+          "video",
+          "plugdev",
+          "netdev",
+          "bluetooth",
+          "lp",
+          "scanner"
+        ],
+        "shell": "/bin/bash",
+        "create_home": true
+      }
+    }
+  },
+
+  "network_configuration": {
+    "manager": "networkmanager",
+    "wifi_backend": "iwd",
+    "config": {
+      "path": "/etc/NetworkManager/conf.d/wifi-backend.conf",
+      "content": [
+        "[device]",
+        "wifi.backend=iwd"
+      ]
+    },
+    "iwd_config": {
+      "path": "/etc/iwd/main.conf",
+      "content": [
+        "[General]",
+        "EnableNetworkConfiguration=false",
+        "",
+        "[Network]",
+        "NameResolvingService=systemd"
+      ]
+    }
+  },
+
+  "security_hardening": {
+    "ssh": {
+      "config_file": "/etc/ssh/sshd_config.d/hardening.conf",
+      "settings": {
+        "PermitRootLogin": "no",
+        "PasswordAuthentication": "yes",
+        "PubkeyAuthentication": "yes",
+        "PermitEmptyPasswords": "no",
+        "X11Forwarding": "no",
+        "AllowTcpForwarding": "no",
+        "MaxAuthTries": 3,
+        "ClientAliveInterval": 300,
+        "ClientAliveCountMax": 2,
+        "Ciphers": "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+        "MACs": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+        "KexAlgorithms": "curve25519-sha256,curve25519-sha256@libssh.org"
+      }
+    },
+
+    "sysctl": {
+      "config_file": "/etc/sysctl.d/99-alpha-hardening.conf",
+      "parameters": {
+        "kernel.dmesg_restrict": 1,
+        "kernel.kptr_restrict": 1,
+        "kernel.yama.ptrace_scope": 1,
+        "kernel.randomize_va_space": 2,
+        "kernel.sysrq": 176,
+        "kernel.unprivileged_bpf_disabled": 1,
+        "net.core.bpf_jit_harden": 2,
+        "net.ipv4.conf.all.send_redirects": 0,
+        "net.ipv4.conf.default.send_redirects": 0,
+        "net.ipv4.conf.all.accept_redirects": 0,
+        "net.ipv4.conf.default.accept_redirects": 0,
+        "net.ipv4.conf.all.rp_filter": 1,
+        "net.ipv4.conf.default.rp_filter": 1,
+        "net.ipv4.tcp_syncookies": 1,
+        "net.ipv4.tcp_timestamps": 1,
+        "net.ipv6.conf.all.accept_redirects": 0,
+        "net.ipv6.conf.default.accept_redirects": 0,
+        "fs.protected_hardlinks": 1,
+        "fs.protected_symlinks": 1,
+        "fs.protected_fifos": 2,
+        "fs.protected_regular": 2
+      }
+    },
+
+    "apparmor": {
+      "enabled": true,
+      "mode": "enforce"
+    },
+
+    "firewall": {
+      "backend": "nftables",
+      "default_policy": "drop",
+      "allow_established": true,
+      "allow_ssh": true
+    }
+  },
+
+  "power_management": {
+    "tlp": {
+      "config_file": "/etc/tlp.d/01-alpha.conf",
+      "settings": {
+        "TLP_ENABLE": 1,
+        "TLP_DEFAULT_MODE": "BAT",
+        "CPU_SCALING_GOVERNOR_ON_AC": "performance",
+        "CPU_SCALING_GOVERNOR_ON_BAT": "powersave",
+        "CPU_ENERGY_PERF_POLICY_ON_AC": "balance_performance",
+        "CPU_ENERGY_PERF_POLICY_ON_BAT": "balance_power",
+        "CPU_BOOST_ON_AC": 1,
+        "CPU_BOOST_ON_BAT": 0,
+        "SCHED_POWERSAVE_ON_AC": 0,
+        "SCHED_POWERSAVE_ON_BAT": 1,
+        "NMI_WATCHDOG": 0,
+        "WIFI_PWR_ON_AC": "off",
+        "WIFI_PWR_ON_BAT": "on",
+        "SOUND_POWER_SAVE_ON_AC": 0,
+        "SOUND_POWER_SAVE_ON_BAT": 1,
+        "RUNTIME_PM_ON_AC": "on",
+        "RUNTIME_PM_ON_BAT": "auto",
+        "USB_AUTOSUSPEND": 1,
+        "USB_EXCLUDE_BTUSB": 1
+      }
+    },
+    "suspend_hibernate": {
+      "suspend_enabled": true,
+      "hibernate_enabled": true,
+      "hybrid_sleep": true,
+      "suspend_then_hibernate": {
+        "enabled": true,
+        "delay_minutes": 60
+      }
+    },
+    "lid_switch": {
+      "action_on_ac": "suspend",
+      "action_on_battery": "suspend"
+    }
+  },
+
+  "optimization": {
+    "memory": {
+      "vm.swappiness": 10,
+      "vm.vfs_cache_pressure": 50,
+      "vm.dirty_ratio": 10,
+      "vm.dirty_background_ratio": 5,
+      "vm.dirty_writeback_centisecs": 1500
+    },
+    "disk_io": {
+      "scheduler_nvme": "none",
+      "scheduler_ssd": "mq-deadline",
+      "scheduler_hdd": "bfq",
+      "read_ahead_kb": 256
+    },
+    "systemd_optimizations": {
+      "default_timeout_start_sec": "30s",
+      "default_timeout_stop_sec": "15s"
+    },
+    "journal": {
+      "storage": "persistent",
+      "max_use": "100M",
+      "max_file_size": "10M",
+      "compress": true
+    },
+    "services_to_disable": [
+      "apt-daily.timer",
+      "apt-daily-upgrade.timer",
+      "man-db.timer"
+    ],
+    "preload": {
+      "enabled": false,
+      "comment": "Enable for HDD systems only"
+    }
+  },
+
+  "desktop_theming": {
+    "gtk_theme": "Adwaita-dark",
+    "icon_theme": "Papirus-Dark",
+    "cursor_theme": "Adwaita",
+    "font": {
+      "interface": "Noto Sans 10",
+      "document": "Noto Sans 10",
+      "monospace": "Noto Sans Mono 10"
+    },
+    "wallpaper": {
+      "path": "/usr/share/backgrounds/alpha-default.png",
+      "color": "#1a1a2e"
+    }
+  },
+
+  "installer": {
+    "type": "custom-tui",
+    "features": [
+      "disk_partitioning",
+      "encryption_setup",
+      "user_creation",
+      "timezone_selection",
+      "locale_selection",
+      "keyboard_layout",
+      "network_setup",
+      "desktop_selection",
+      "bootloader_install"
+    ],
+    "installer_packages": [
+      "dialog",
+      "whiptail",
+      "parted",
+      "arch-install-scripts"
+    ]
+  },
+
+  "build_scripts": {
+    "iso_builder": "live-build",
+    "build_steps": [
+      {
+        "step": 1,
+        "name": "setup_live_build",
+        "commands": [
+          "mkdir -p alpha-live && cd alpha-live",
+          "lb config --distribution bookworm --archive-areas 'main contrib non-free non-free-firmware' --apt-recommends false --binary-images iso-hybrid --bootloaders 'grub-efi,syslinux' --debian-installer none --memtest none --security true --updates true"
+        ]
+      },
+      {
+        "step": 2,
+        "name": "configure_packages",
+        "description": "Create package lists based on variant"
+      },
+      {
+        "step": 3,
+        "name": "configure_hooks",
+        "description": "Add customization scripts"
+      },
+      {
+        "step": 4,
+        "name": "build_iso",
+        "commands": [
+          "lb build"
+        ]
+      }
+    ]
+  },
+
+  "output": {
+    "formats": ["iso", "img"],
+    "naming_convention": "alpha-linux-{{VERSION}}-{{VARIANT}}-{{ARCH}}.iso",
+    "checksums": ["sha256", "sha512"],
+    "gpg_sign": true
+  },
+
+  "post_install": {
+    "first_boot_scripts": [
+      "generate-machine-id",
+      "regenerate-ssh-host-keys",
+      "setup-user-directories",
+      "configure-hardware-specific"
+    ],
+    "hardware_detection": {
+      "nvidia_autoinstall": true,
+      "battery_present_check": true,
+      "ssd_trim_enable": true
+    }
+  },
+
+  "documentation": {
+    "readme": true,
+    "installation_guide": true,
+    "hardware_compatibility_list": true,
+    "troubleshooting_guide": true
+  }
+}

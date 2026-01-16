@@ -1,0 +1,520 @@
+#!/bin/bash
+#===============================================================================
+#
+#          FILE: alphha-report
+#
+#         USAGE: alphha-report [OPTIONS]
+#
+#   DESCRIPTION: Professional security report generator for Alphha Security OS
+#                Generates formatted reports from scan results.
+#
+#       OPTIONS: -i, --input      Input directory with scan results
+#                -o, --output     Output file (default: report.html)
+#                -f, --format     Output format (html|md|pdf)
+#                -t, --title      Report title
+#                -c, --client     Client name
+#                -h, --help       Show help
+#
+#        AUTHOR: Alphha Team
+#     COPYRIGHT: Copyright (c) 2026 Alphha Team
+#       LICENSE: BSD-3-Clause
+#       VERSION: 1.0.0
+#
+#===============================================================================
+
+set -euo pipefail
+
+readonly VERSION="1.0.0"
+readonly SCRIPT_NAME="alphha-report"
+readonly GREEN='\033[0;32m'
+readonly CYAN='\033[0;36m'
+readonly YELLOW='\033[0;33m'
+readonly RED='\033[0;31m'
+readonly NC='\033[0m'
+
+# Default options
+INPUT_DIR=""
+OUTPUT_FILE="report.html"
+FORMAT="html"
+TITLE="Security Assessment Report"
+CLIENT=""
+
+log_info()    { echo -e "${GREEN}[+]${NC} $*"; }
+log_warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
+log_error()   { echo -e "${RED}[-]${NC} $*" >&2; }
+log_step()    { echo -e "${CYAN}[*]${NC} $*"; }
+
+print_banner() {
+    echo -e "${GREEN}"
+    cat << 'EOF'
+    _    _       _     _
+   / \  | |_ __ | |__ | |__   __ _
+  / _ \ | | '_ \| '_ \| '_ \ / _` |
+ / ___ \| | |_) | | | | | | | (_| |
+/_/   \_\_| .__/|_| |_|_| |_|\__,_|
+          |_|  Report Generator
+EOF
+    echo -e "${NC}"
+    echo -e "${CYAN}Version: $VERSION${NC}"
+    echo ""
+}
+
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME [OPTIONS]
+
+Generate professional security reports.
+
+OPTIONS:
+    -i, --input     Input directory containing scan results
+    -o, --output    Output file (default: report.html)
+    -f, --format    Output format: html, md, pdf (default: html)
+    -t, --title     Report title
+    -c, --client    Client/organization name
+    -h, --help      Show this help
+
+EXAMPLES:
+    $SCRIPT_NAME -i ./recon-example.com -o report.html
+    $SCRIPT_NAME -i ./vuln-scan -f pdf -c "Acme Corp"
+    $SCRIPT_NAME -i ./results -t "Pentest Report Q1 2026"
+
+COPYRIGHT:
+    Copyright (c) 2026 Alphha Team
+
+EOF
+    exit 0
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -i|--input)
+                INPUT_DIR="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            -f|--format)
+                FORMAT="$2"
+                shift 2
+                ;;
+            -t|--title)
+                TITLE="$2"
+                shift 2
+                ;;
+            -c|--client)
+                CLIENT="$2"
+                shift 2
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
+
+    if [[ -z "$INPUT_DIR" ]]; then
+        log_error "Input directory is required"
+        usage
+    fi
+
+    if [[ ! -d "$INPUT_DIR" ]]; then
+        log_error "Input directory does not exist: $INPUT_DIR"
+        exit 1
+    fi
+}
+
+generate_html_report() {
+    log_step "Generating HTML report..."
+
+    cat > "$OUTPUT_FILE" << EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$TITLE</title>
+    <style>
+        :root {
+            --primary: #00ff41;
+            --secondary: #0d0d0d;
+            --accent: #ff0040;
+            --bg: #0a0a0a;
+            --text: #e0e0e0;
+            --border: #333;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 2rem;
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: 2rem;
+        }
+        .logo {
+            color: var(--primary);
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        h2 {
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+            margin: 2rem 0 1rem;
+        }
+        h3 {
+            color: var(--text);
+            margin: 1.5rem 0 0.5rem;
+        }
+        .meta {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        .section {
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .critical { border-left: 4px solid #ff0040; }
+        .high { border-left: 4px solid #ff6600; }
+        .medium { border-left: 4px solid #ffcc00; }
+        .low { border-left: 4px solid #00ff41; }
+        .info { border-left: 4px solid #00bfff; }
+        pre {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+        code {
+            font-family: 'Consolas', monospace;
+            background: #1a1a1a;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--secondary);
+            color: var(--primary);
+        }
+        .severity-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .severity-critical { background: #ff0040; color: white; }
+        .severity-high { background: #ff6600; color: white; }
+        .severity-medium { background: #ffcc00; color: black; }
+        .severity-low { background: #00ff41; color: black; }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border);
+            color: #666;
+        }
+        .toc {
+            background: var(--secondary);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .toc ul {
+            list-style: none;
+            padding-left: 1rem;
+        }
+        .toc a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">ALPHHA</div>
+            <h1>$TITLE</h1>
+            <p class="meta">
+                $([ -n "$CLIENT" ] && echo "Client: $CLIENT<br>")
+                Generated: $(date '+%B %d, %Y at %H:%M:%S')
+            </p>
+        </header>
+
+        <nav class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#executive-summary">1. Executive Summary</a></li>
+                <li><a href="#scope">2. Scope</a></li>
+                <li><a href="#findings">3. Findings</a></li>
+                <li><a href="#recommendations">4. Recommendations</a></li>
+                <li><a href="#appendix">5. Appendix</a></li>
+            </ul>
+        </nav>
+
+        <section id="executive-summary">
+            <h2>1. Executive Summary</h2>
+            <div class="section">
+                <p>This report presents the findings from a security assessment conducted using
+                Alphha Security OS. The assessment was designed to identify security vulnerabilities
+                and potential risks within the target environment.</p>
+            </div>
+        </section>
+
+        <section id="scope">
+            <h2>2. Scope</h2>
+            <div class="section">
+                <p><strong>Assessment Type:</strong> Vulnerability Assessment</p>
+                <p><strong>Input Directory:</strong> $INPUT_DIR</p>
+                <p><strong>Date:</strong> $(date '+%Y-%m-%d')</p>
+            </div>
+        </section>
+
+        <section id="findings">
+            <h2>3. Findings</h2>
+EOF
+
+    # Parse and include scan results
+    local finding_num=1
+
+    # Include Nmap results
+    if ls "$INPUT_DIR"/**/nmap*.nmap &>/dev/null 2>&1 || ls "$INPUT_DIR"/nmap/*.nmap &>/dev/null 2>&1; then
+        echo "<h3>3.${finding_num}. Network Scan Results</h3>" >> "$OUTPUT_FILE"
+        echo '<div class="section info">' >> "$OUTPUT_FILE"
+        echo '<pre>' >> "$OUTPUT_FILE"
+        cat "$INPUT_DIR"/**/nmap*.nmap 2>/dev/null | head -100 >> "$OUTPUT_FILE" || \
+        cat "$INPUT_DIR"/nmap/*.nmap 2>/dev/null | head -100 >> "$OUTPUT_FILE" || true
+        echo '</pre>' >> "$OUTPUT_FILE"
+        echo '</div>' >> "$OUTPUT_FILE"
+        ((finding_num++))
+    fi
+
+    # Include vulnerability scan results
+    if ls "$INPUT_DIR"/**/vuln*.txt &>/dev/null 2>&1; then
+        echo "<h3>3.${finding_num}. Vulnerability Scan Results</h3>" >> "$OUTPUT_FILE"
+        echo '<div class="section high">' >> "$OUTPUT_FILE"
+        echo '<pre>' >> "$OUTPUT_FILE"
+        cat "$INPUT_DIR"/**/vuln*.txt 2>/dev/null | head -100 >> "$OUTPUT_FILE" || true
+        echo '</pre>' >> "$OUTPUT_FILE"
+        echo '</div>' >> "$OUTPUT_FILE"
+        ((finding_num++))
+    fi
+
+    # Include Nuclei results
+    if ls "$INPUT_DIR"/**/nuclei*.txt &>/dev/null 2>&1; then
+        echo "<h3>3.${finding_num}. Nuclei Scan Results</h3>" >> "$OUTPUT_FILE"
+        echo '<div class="section medium">' >> "$OUTPUT_FILE"
+        echo '<pre>' >> "$OUTPUT_FILE"
+        cat "$INPUT_DIR"/**/nuclei*.txt 2>/dev/null | head -50 >> "$OUTPUT_FILE" || true
+        echo '</pre>' >> "$OUTPUT_FILE"
+        echo '</div>' >> "$OUTPUT_FILE"
+        ((finding_num++))
+    fi
+
+    cat >> "$OUTPUT_FILE" << EOF
+        </section>
+
+        <section id="recommendations">
+            <h2>4. Recommendations</h2>
+            <div class="section">
+                <ol>
+                    <li>Review all identified vulnerabilities and prioritize based on severity</li>
+                    <li>Apply security patches and updates to affected systems</li>
+                    <li>Implement network segmentation to limit lateral movement</li>
+                    <li>Enable comprehensive logging and monitoring</li>
+                    <li>Conduct regular security assessments</li>
+                    <li>Implement a vulnerability management program</li>
+                </ol>
+            </div>
+        </section>
+
+        <section id="appendix">
+            <h2>5. Appendix</h2>
+            <div class="section">
+                <p><strong>Tools Used:</strong></p>
+                <ul>
+                    <li>Alphha Security OS v1.0.0</li>
+                    <li>Nmap Network Scanner</li>
+                    <li>Nuclei Vulnerability Scanner</li>
+                    <li>Additional security assessment tools</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer>
+            <p>Report generated by <strong>Alphha Security OS</strong></p>
+            <p>Copyright (c) 2026 Alphha Team</p>
+        </footer>
+    </div>
+</body>
+</html>
+EOF
+
+    log_info "HTML report generated: $OUTPUT_FILE"
+}
+
+generate_markdown_report() {
+    log_step "Generating Markdown report..."
+
+    cat > "$OUTPUT_FILE" << EOF
+# $TITLE
+
+$([ -n "$CLIENT" ] && echo "**Client:** $CLIENT")
+**Date:** $(date '+%B %d, %Y')
+**Generated by:** Alphha Security OS v$VERSION
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Scope](#scope)
+3. [Findings](#findings)
+4. [Recommendations](#recommendations)
+5. [Appendix](#appendix)
+
+---
+
+## Executive Summary
+
+This report presents the findings from a security assessment conducted using
+Alphha Security OS. The assessment was designed to identify security vulnerabilities
+and potential risks within the target environment.
+
+---
+
+## Scope
+
+- **Assessment Type:** Vulnerability Assessment
+- **Input Directory:** \`$INPUT_DIR\`
+- **Date:** $(date '+%Y-%m-%d')
+
+---
+
+## Findings
+
+EOF
+
+    # Include scan results
+    if ls "$INPUT_DIR"/**/*.txt &>/dev/null 2>&1; then
+        echo "### Scan Results" >> "$OUTPUT_FILE"
+        echo "" >> "$OUTPUT_FILE"
+        echo "\`\`\`" >> "$OUTPUT_FILE"
+        find "$INPUT_DIR" -name "*.txt" -exec head -50 {} \; 2>/dev/null | head -200 >> "$OUTPUT_FILE"
+        echo "\`\`\`" >> "$OUTPUT_FILE"
+    fi
+
+    cat >> "$OUTPUT_FILE" << EOF
+
+---
+
+## Recommendations
+
+1. Review all identified vulnerabilities and prioritize based on severity
+2. Apply security patches and updates to affected systems
+3. Implement network segmentation to limit lateral movement
+4. Enable comprehensive logging and monitoring
+5. Conduct regular security assessments
+
+---
+
+## Appendix
+
+**Tools Used:**
+- Alphha Security OS v1.0.0
+- Nmap Network Scanner
+- Nuclei Vulnerability Scanner
+
+---
+
+*Report generated by Alphha Security OS*
+*Copyright (c) 2026 Alphha Team*
+EOF
+
+    log_info "Markdown report generated: $OUTPUT_FILE"
+}
+
+# Main
+main() {
+    print_banner
+    parse_args "$@"
+
+    log_info "Input: $INPUT_DIR"
+    log_info "Output: $OUTPUT_FILE"
+    log_info "Format: $FORMAT"
+    echo ""
+
+    case "$FORMAT" in
+        html)
+            generate_html_report
+            ;;
+        md|markdown)
+            generate_markdown_report
+            ;;
+        pdf)
+            # Generate HTML first, then convert to PDF
+            local temp_html="/tmp/alphha_report_$(date +%s).html"
+            OUTPUT_FILE="$temp_html"
+            generate_html_report
+            if command -v wkhtmltopdf &>/dev/null; then
+                OUTPUT_FILE="${OUTPUT_FILE%.html}.pdf"
+                wkhtmltopdf "$temp_html" "$OUTPUT_FILE"
+                rm "$temp_html"
+                log_info "PDF report generated: $OUTPUT_FILE"
+            else
+                log_warn "wkhtmltopdf not installed, HTML report saved instead"
+                mv "$temp_html" "${OUTPUT_FILE%.html}.html"
+            fi
+            ;;
+        *)
+            log_error "Unsupported format: $FORMAT"
+            exit 1
+            ;;
+    esac
+
+    echo ""
+    log_info "Report generation complete!"
+}
+
+main "$@"

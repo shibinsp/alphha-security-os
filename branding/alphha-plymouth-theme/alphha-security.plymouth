@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Alphha Security
+Description=Alphha Security OS Boot Theme
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/alphha-security
+ScriptFile=/usr/share/plymouth/themes/alphha-security/alphha-security.script

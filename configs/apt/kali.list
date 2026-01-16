@@ -1,0 +1,11 @@
+# Alphha Security OS - Kali Linux Repository
+# Copyright (c) 2026 Alphha Team
+#
+# NOTE: This repository is configured with lower priority to prevent
+# conflicts with Debian packages. Only security-specific tools will
+# be installed from this repository.
+#
+# To enable, uncomment the line below and import the GPG key:
+#   curl -fsSL https://archive.kali.org/archive-key.asc | gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg
+
+# deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware

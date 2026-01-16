@@ -1,0 +1,108 @@
+================================================================================
+                         ALPHHA SECURITY OS
+                         COPYRIGHT NOTICE
+================================================================================
+
+Copyright (c) 2026 Alphha Team
+All Rights Reserved.
+
+================================================================================
+                         INTELLECTUAL PROPERTY
+================================================================================
+
+OWNERSHIP:
+The following components of Alphha Security OS are original works created by
+and owned by the Alphha Team:
+
+1. BUILD SYSTEM
+   - build-alphha-security.sh (ISO builder)
+   - build-alphha-security-vm.sh (VM image builder)
+   - alphha-security-spec.json (OS specification)
+   - alphha-security-vm-spec.json (VM specification)
+
+2. CUSTOM TOOLS (alphha-toolkit)
+   - alphha-recon (reconnaissance automation)
+   - alphha-vuln (vulnerability assessment wrapper)
+   - alphha-report (security report generator)
+   - alphha-backup (forensic evidence collection)
+   - alphha-clean (forensic cleanup utility)
+   - alphha-menu (security tools launcher)
+   - alphha-update (system update utility)
+
+3. INSTALLER
+   - alphha-install (TUI installation wizard)
+
+4. BRANDING ASSETS
+   - Alphha logo and variations
+   - Desktop wallpapers
+   - GRUB bootloader theme
+   - Plymouth boot splash theme
+   - Icon designs
+
+5. DOCUMENTATION
+   - User guides
+   - Installation documentation
+   - Tool documentation
+
+6. CONFIGURATION FILES
+   - Security hardening configurations
+   - Desktop environment customizations
+   - Network configurations
+
+================================================================================
+                         THIRD-PARTY COMPONENTS
+================================================================================
+
+Alphha Security OS incorporates various open-source tools and components,
+each distributed under their own respective licenses:
+
+- Debian GNU/Linux (base system)
+- Linux Kernel
+- XFCE Desktop Environment
+- Security tools from Debian and Kali repositories
+
+Please refer to the individual tool documentation and /usr/share/doc/ for
+specific licensing information.
+
+================================================================================
+                         TRADEMARK NOTICE
+================================================================================
+
+The following are trademarks of the Alphha Team:
+
+- "Alphha Security OS"
+- "Alphha Security"
+- "Alphha"
+- Alphha logo and visual identity
+- "Sentinel" (codename)
+
+These trademarks may not be used without prior written permission from the
+Alphha Team.
+
+================================================================================
+                         CONTACT INFORMATION
+================================================================================
+
+Alphha Team
+Website: https://alphha.io
+Email: team@alphha.io
+
+For licensing inquiries, please contact: legal@alphha.io
+
+================================================================================
+                         VERSION INFORMATION
+================================================================================
+
+Product:     Alphha Security OS
+Version:     1.0.0
+Codename:    Sentinel
+Release:     2026
+Build Date:  January 2026
+
+================================================================================
+
+This document establishes the intellectual property rights of the Alphha Team
+over the original components of Alphha Security OS. Unauthorized use,
+reproduction, or distribution of proprietary components is prohibited.
+
+Copyright (c) 2026 Alphha Team - All Rights Reserved

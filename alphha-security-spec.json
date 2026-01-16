@@ -1,0 +1,704 @@
+{
+  "metadata": {
+    "name": "Alphha Security OS",
+    "codename": "Sentinel",
+    "version": "1.0.0",
+    "base": "Debian Bookworm",
+    "architecture": ["amd64", "arm64"],
+    "type": "cybersecurity-distribution",
+    "focus": "all-in-one-security",
+    "maintainer": "Alphha Team",
+    "website": "https://alphha.io",
+    "copyright": "Copyright (c) 2026 Alphha Team",
+    "license": "BSD-3-Clause",
+    "build_date": "{{TIMESTAMP}}",
+    "description": "An all-in-one Debian-based cybersecurity distribution combining offensive and defensive security tools with unique branding and hardened configurations."
+  },
+
+  "system": {
+    "hostname": "alphha-sec",
+    "default_user": "sentinel",
+    "default_groups": ["sudo", "adm", "cdrom", "floppy", "audio", "video", "plugdev", "netdev", "bluetooth", "wireshark", "docker"],
+    "shell": "/bin/zsh",
+    "locale": "en_US.UTF-8",
+    "timezone": "UTC",
+    "keyboard": {
+      "layout": "us",
+      "variant": ""
+    }
+  },
+
+  "desktop": {
+    "environment": "xfce",
+    "display_manager": "lightdm",
+    "theme": {
+      "gtk": "Alphha-Dark",
+      "icons": "Papirus-Dark",
+      "cursor": "Adwaita",
+      "font": {
+        "interface": "Noto Sans 10",
+        "monospace": "JetBrains Mono 10",
+        "document": "Noto Sans 10"
+      }
+    },
+    "wallpaper": "/usr/share/backgrounds/alphha/alphha-default.png",
+    "workspaces": {
+      "count": 4,
+      "names": ["Terminals", "Web Apps", "Analysis", "Documentation"]
+    },
+    "panel": {
+      "position": "top",
+      "height": 28,
+      "plugins": ["whisker-menu", "tasklist", "systray", "pulseaudio", "power-manager", "clock", "actions"]
+    }
+  },
+
+  "repositories": {
+    "debian": {
+      "main": "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware",
+      "security": "deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware",
+      "updates": "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware"
+    },
+    "kali": {
+      "enabled": true,
+      "url": "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware",
+      "key": "https://archive.kali.org/archive-key.asc"
+    }
+  },
+
+  "packages": {
+    "core": {
+      "system": [
+        "linux-image-amd64",
+        "linux-headers-amd64",
+        "firmware-linux",
+        "firmware-linux-nonfree",
+        "intel-microcode",
+        "amd64-microcode",
+        "systemd",
+        "systemd-sysv",
+        "dbus",
+        "policykit-1",
+        "sudo",
+        "zsh",
+        "zsh-autosuggestions",
+        "zsh-syntax-highlighting"
+      ],
+      "bootloader": [
+        "grub-efi-amd64",
+        "grub-pc-bin",
+        "efibootmgr",
+        "os-prober"
+      ],
+      "filesystem": [
+        "btrfs-progs",
+        "e2fsprogs",
+        "dosfstools",
+        "ntfs-3g",
+        "exfatprogs",
+        "cryptsetup",
+        "lvm2"
+      ],
+      "networking": [
+        "network-manager",
+        "network-manager-gnome",
+        "iwd",
+        "wpasupplicant",
+        "wireless-tools",
+        "rfkill",
+        "ethtool",
+        "bridge-utils",
+        "vlan",
+        "dnsutils",
+        "whois"
+      ]
+    },
+
+    "desktop_xfce": [
+      "xfce4",
+      "xfce4-goodies",
+      "xfce4-terminal",
+      "xfce4-whiskermenu-plugin",
+      "thunar",
+      "thunar-archive-plugin",
+      "thunar-volman",
+      "lightdm",
+      "lightdm-gtk-greeter",
+      "lightdm-gtk-greeter-settings",
+      "xorg",
+      "xserver-xorg-video-all",
+      "mesa-utils",
+      "fonts-noto",
+      "fonts-jetbrains-mono",
+      "papirus-icon-theme",
+      "arc-theme",
+      "plymouth",
+      "plymouth-themes"
+    ],
+
+    "security_tools": {
+      "information_gathering": [
+        "nmap",
+        "masscan",
+        "zenmap",
+        "netdiscover",
+        "arp-scan",
+        "dnsrecon",
+        "dnsenum",
+        "fierce",
+        "sublist3r",
+        "amass",
+        "theharvester",
+        "recon-ng",
+        "maltego",
+        "spiderfoot",
+        "enum4linux",
+        "nbtscan",
+        "onesixtyone",
+        "snmpwalk",
+        "smtp-user-enum"
+      ],
+
+      "vulnerability_analysis": [
+        "nikto",
+        "wpscan",
+        "sqlmap",
+        "nuclei",
+        "testssl.sh",
+        "sslscan",
+        "sslyze",
+        "lynis",
+        "unix-privesc-check",
+        "linux-exploit-suggester"
+      ],
+
+      "web_application": [
+        "burpsuite",
+        "zaproxy",
+        "ffuf",
+        "gobuster",
+        "dirb",
+        "dirbuster",
+        "wfuzz",
+        "httpx",
+        "feroxbuster",
+        "whatweb",
+        "wafw00f",
+        "arjun",
+        "paramspider",
+        "hakrawler",
+        "gau"
+      ],
+
+      "password_attacks": [
+        "hashcat",
+        "john",
+        "hydra",
+        "medusa",
+        "ncrack",
+        "cewl",
+        "crunch",
+        "wordlists",
+        "seclists",
+        "hash-identifier",
+        "hashid",
+        "patator",
+        "crowbar"
+      ],
+
+      "wireless": [
+        "aircrack-ng",
+        "wifite",
+        "reaver",
+        "bully",
+        "pixiewps",
+        "kismet",
+        "hcxtools",
+        "hcxdumptool",
+        "mdk4",
+        "hostapd-wpe",
+        "fern-wifi-cracker",
+        "wifiphisher"
+      ],
+
+      "exploitation": [
+        "metasploit-framework",
+        "exploitdb",
+        "searchsploit",
+        "beef-xss",
+        "set",
+        "crackmapexec",
+        "evilginx2",
+        "gophish"
+      ],
+
+      "post_exploitation": [
+        "empire",
+        "chisel",
+        "ligolo-ng",
+        "pwncat",
+        "evil-winrm",
+        "impacket-scripts",
+        "bloodhound",
+        "sharphound",
+        "mimikatz",
+        "lazagne",
+        "secretsdump"
+      ],
+
+      "forensics": [
+        "autopsy",
+        "sleuthkit",
+        "volatility3",
+        "foremost",
+        "scalpel",
+        "photorec",
+        "testdisk",
+        "binwalk",
+        "bulk-extractor",
+        "guymager",
+        "dc3dd",
+        "dcfldd",
+        "ewf-tools",
+        "afflib-tools",
+        "plaso",
+        "log2timeline"
+      ],
+
+      "reverse_engineering": [
+        "ghidra",
+        "radare2",
+        "rizin",
+        "iaito",
+        "gdb",
+        "pwndbg",
+        "peda",
+        "gef",
+        "ltrace",
+        "strace",
+        "objdump",
+        "readelf",
+        "checksec",
+        "ropper",
+        "ropgadget",
+        "angr",
+        "capstone",
+        "keystone"
+      ],
+
+      "network_analysis": [
+        "wireshark",
+        "tshark",
+        "tcpdump",
+        "ettercap",
+        "bettercap",
+        "mitmproxy",
+        "responder",
+        "mitm6",
+        "ntlmrelayx",
+        "arpspoof",
+        "dnsspoof",
+        "dsniff",
+        "netsniff-ng",
+        "scapy"
+      ],
+
+      "anonymity": [
+        "tor",
+        "torsocks",
+        "proxychains-ng",
+        "privoxy",
+        "macchanger",
+        "bleachbit",
+        "secure-delete",
+        "mat2"
+      ],
+
+      "defensive_blueteam": [
+        "ossec-hids",
+        "snort",
+        "suricata",
+        "zeek",
+        "fail2ban",
+        "rkhunter",
+        "chkrootkit",
+        "clamav",
+        "clamav-daemon",
+        "aide",
+        "tripwire",
+        "auditd",
+        "osquery",
+        "yara"
+      ],
+
+      "siem_logging": [
+        "rsyslog",
+        "syslog-ng",
+        "logwatch",
+        "goaccess",
+        "lnav"
+      ],
+
+      "hardening": [
+        "lynis",
+        "tiger",
+        "bastille",
+        "apparmor",
+        "apparmor-profiles",
+        "apparmor-utils",
+        "firejail",
+        "ufw",
+        "nftables",
+        "iptables-persistent"
+      ]
+    },
+
+    "development": [
+      "git",
+      "git-lfs",
+      "build-essential",
+      "gcc",
+      "g++",
+      "make",
+      "cmake",
+      "automake",
+      "autoconf",
+      "python3",
+      "python3-pip",
+      "python3-venv",
+      "python3-dev",
+      "ruby",
+      "ruby-dev",
+      "golang",
+      "rustc",
+      "cargo",
+      "nodejs",
+      "npm",
+      "default-jdk",
+      "php",
+      "php-cli",
+      "perl"
+    ],
+
+    "editors": [
+      "vim",
+      "neovim",
+      "nano",
+      "gedit",
+      "mousepad"
+    ],
+
+    "utilities": [
+      "curl",
+      "wget",
+      "htop",
+      "btop",
+      "tmux",
+      "screen",
+      "tree",
+      "jq",
+      "yq",
+      "fzf",
+      "ripgrep",
+      "fd-find",
+      "bat",
+      "exa",
+      "ncdu",
+      "duf",
+      "unzip",
+      "zip",
+      "p7zip-full",
+      "rar",
+      "unrar",
+      "file",
+      "xxd",
+      "hexedit",
+      "pv",
+      "rsync",
+      "openssh-client",
+      "openssh-server",
+      "sshpass",
+      "openvpn",
+      "wireguard",
+      "socat",
+      "netcat-openbsd",
+      "ncat"
+    ],
+
+    "browsers": [
+      "firefox-esr",
+      "chromium"
+    ],
+
+    "virtualization": [
+      "docker.io",
+      "docker-compose",
+      "qemu-system-x86",
+      "qemu-utils",
+      "libvirt-daemon-system",
+      "virt-manager"
+    ]
+  },
+
+  "security_hardening": {
+    "kernel": {
+      "sysctl": {
+        "kernel.randomize_va_space": 2,
+        "kernel.kptr_restrict": 2,
+        "kernel.dmesg_restrict": 1,
+        "kernel.perf_event_paranoid": 3,
+        "kernel.yama.ptrace_scope": 1,
+        "kernel.unprivileged_bpf_disabled": 1,
+        "net.core.bpf_jit_harden": 2,
+        "net.ipv4.conf.all.rp_filter": 1,
+        "net.ipv4.conf.default.rp_filter": 1,
+        "net.ipv4.icmp_echo_ignore_broadcasts": 1,
+        "net.ipv4.icmp_ignore_bogus_error_responses": 1,
+        "net.ipv4.tcp_syncookies": 1,
+        "net.ipv4.tcp_rfc1337": 1,
+        "net.ipv4.conf.all.accept_redirects": 0,
+        "net.ipv4.conf.default.accept_redirects": 0,
+        "net.ipv4.conf.all.secure_redirects": 0,
+        "net.ipv4.conf.default.secure_redirects": 0,
+        "net.ipv4.conf.all.send_redirects": 0,
+        "net.ipv4.conf.default.send_redirects": 0,
+        "net.ipv6.conf.all.accept_redirects": 0,
+        "net.ipv6.conf.default.accept_redirects": 0,
+        "fs.protected_hardlinks": 1,
+        "fs.protected_symlinks": 1,
+        "fs.suid_dumpable": 0
+      },
+      "modules_blacklist": [
+        "dccp",
+        "sctp",
+        "rds",
+        "tipc",
+        "n-hdlc",
+        "ax25",
+        "netrom",
+        "x25",
+        "rose",
+        "decnet",
+        "econet",
+        "af_802154",
+        "ipx",
+        "appletalk",
+        "psnap",
+        "p8023",
+        "p8022",
+        "can",
+        "atm",
+        "cramfs",
+        "freevxfs",
+        "jffs2",
+        "hfs",
+        "hfsplus",
+        "squashfs",
+        "udf",
+        "firewire-core",
+        "thunderbolt"
+      ]
+    },
+    "ssh": {
+      "PermitRootLogin": "no",
+      "PasswordAuthentication": "yes",
+      "PubkeyAuthentication": "yes",
+      "MaxAuthTries": 3,
+      "X11Forwarding": "no",
+      "AllowAgentForwarding": "no",
+      "AllowTcpForwarding": "no",
+      "PermitEmptyPasswords": "no",
+      "ClientAliveInterval": 300,
+      "ClientAliveCountMax": 2,
+      "Protocol": 2,
+      "Ciphers": "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+      "MACs": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+      "KexAlgorithms": "curve25519-sha256,curve25519-sha256@libssh.org"
+    },
+    "firewall": {
+      "backend": "nftables",
+      "default_policy": {
+        "input": "drop",
+        "forward": "drop",
+        "output": "accept"
+      },
+      "allowed_ports": [
+        {"port": 22, "protocol": "tcp", "comment": "SSH"}
+      ]
+    },
+    "apparmor": {
+      "enabled": true,
+      "mode": "enforce",
+      "profiles": ["firefox", "chromium", "thunderbird", "evince"]
+    }
+  },
+
+  "branding": {
+    "name": "Alphha Security",
+    "ascii_art": [
+      "    _    _       _     _           ",
+      "   / \\  | |_ __ | |__ | |__   __ _ ",
+      "  / _ \\ | | '_ \\| '_ \\| '_ \\ / _` |",
+      " / ___ \\| | |_) | | | | | | | (_| |",
+      "/_/   \\_\\_| .__/|_| |_|_| |_|\\__,_|",
+      "          |_|  Security OS v1.0    "
+    ],
+    "colors": {
+      "primary": "#00ff41",
+      "secondary": "#0d0d0d",
+      "accent": "#ff0040",
+      "background": "#0a0a0a",
+      "foreground": "#00ff41"
+    },
+    "grub_theme": {
+      "name": "alphha-security",
+      "background": "#0a0a0a",
+      "foreground": "#00ff41",
+      "highlight": "#ff0040"
+    },
+    "plymouth_theme": {
+      "name": "alphha-security",
+      "type": "script"
+    }
+  },
+
+  "installer": {
+    "name": "alphha-install",
+    "modes": [
+      {
+        "id": "full",
+        "name": "Full Installation",
+        "description": "All security tools (offensive + defensive)",
+        "size": "6 GB"
+      },
+      {
+        "id": "offensive",
+        "name": "Offensive Security",
+        "description": "Penetration testing and red team tools",
+        "size": "4 GB"
+      },
+      {
+        "id": "defensive",
+        "name": "Defensive Security",
+        "description": "Blue team, SIEM, and monitoring tools",
+        "size": "3 GB"
+      },
+      {
+        "id": "forensics",
+        "name": "Forensic Workstation",
+        "description": "Digital forensics and incident response",
+        "size": "3 GB"
+      },
+      {
+        "id": "minimal",
+        "name": "Minimal CLI",
+        "description": "Core tools only, no desktop",
+        "size": "1.5 GB"
+      },
+      {
+        "id": "custom",
+        "name": "Custom Installation",
+        "description": "Select individual tool categories",
+        "size": "Variable"
+      }
+    ],
+    "disk_schemes": {
+      "uefi_recommended": {
+        "table": "gpt",
+        "partitions": [
+          {"name": "EFI", "size": "512M", "type": "esp", "fs": "vfat", "mount": "/boot/efi"},
+          {"name": "Boot", "size": "1G", "type": "linux", "fs": "ext4", "mount": "/boot"},
+          {"name": "Root", "size": "remaining", "type": "linux", "fs": "btrfs", "mount": "/"}
+        ],
+        "btrfs_subvolumes": ["@", "@home", "@snapshots", "@var_log"]
+      },
+      "encrypted": {
+        "table": "gpt",
+        "partitions": [
+          {"name": "EFI", "size": "512M", "type": "esp", "fs": "vfat", "mount": "/boot/efi"},
+          {"name": "Boot", "size": "1G", "type": "linux", "fs": "ext4", "mount": "/boot"},
+          {"name": "Root", "size": "remaining", "type": "luks2", "fs": "btrfs", "mount": "/"}
+        ],
+        "luks": {
+          "cipher": "aes-xts-plain64",
+          "key_size": 512,
+          "hash": "sha512",
+          "iter_time": 5000
+        }
+      }
+    }
+  },
+
+  "boot_modes": {
+    "normal": {
+      "name": "Alphha Security OS",
+      "kernel_params": "quiet splash"
+    },
+    "forensic": {
+      "name": "Forensic Mode (Read-Only)",
+      "kernel_params": "noswap noautomount forensic"
+    },
+    "safe": {
+      "name": "Safe Mode",
+      "kernel_params": "single nomodeset"
+    },
+    "debug": {
+      "name": "Debug Mode",
+      "kernel_params": "debug systemd.log_level=debug"
+    }
+  },
+
+  "custom_tools": {
+    "alphha_toolkit": {
+      "location": "/opt/alphha-toolkit",
+      "scripts": [
+        {
+          "name": "alphha-recon",
+          "description": "Automated reconnaissance workflow",
+          "category": "information-gathering"
+        },
+        {
+          "name": "alphha-vuln",
+          "description": "Vulnerability assessment wrapper",
+          "category": "vulnerability-analysis"
+        },
+        {
+          "name": "alphha-report",
+          "description": "Generate professional security reports",
+          "category": "reporting"
+        },
+        {
+          "name": "alphha-backup",
+          "description": "Secure evidence collection and backup",
+          "category": "forensics"
+        },
+        {
+          "name": "alphha-clean",
+          "description": "Forensic cleanup and sanitization",
+          "category": "cleanup"
+        }
+      ]
+    },
+    "alphha_menu": {
+      "location": "/usr/bin/alphha-menu",
+      "description": "Terminal-based security tools launcher"
+    },
+    "alphha_update": {
+      "location": "/usr/bin/alphha-update",
+      "description": "System and tools update utility"
+    }
+  },
+
+  "os_release": {
+    "NAME": "Alphha Security OS",
+    "VERSION": "1.0.0 (Sentinel)",
+    "ID": "alphha",
+    "ID_LIKE": "debian",
+    "VERSION_ID": "1.0.0",
+    "VERSION_CODENAME": "sentinel",
+    "PRETTY_NAME": "Alphha Security OS 1.0.0 (Sentinel)",
+    "HOME_URL": "https://alphha.io",
+    "SUPPORT_URL": "https://alphha.io/support",
+    "BUG_REPORT_URL": "https://alphha.io/bugs"
+  }
+}

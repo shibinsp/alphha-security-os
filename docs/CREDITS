@@ -1,0 +1,113 @@
+================================================================================
+                         ALPHHA SECURITY OS
+                         CREDITS & ACKNOWLEDGMENTS
+================================================================================
+
+                         Copyright (c) 2026 Alphha Team
+
+================================================================================
+                         ALPHHA TEAM
+================================================================================
+
+Alphha Security OS was created and is maintained by the Alphha Team.
+
+Core Development:
+  - OS Architecture & Design
+  - Build System Development
+  - Custom Security Tools (alphha-toolkit)
+  - Branding & Visual Identity
+  - Documentation
+
+================================================================================
+                         THIRD-PARTY ACKNOWLEDGMENTS
+================================================================================
+
+Alphha Security OS is built upon and includes numerous open-source projects.
+We are deeply grateful to the developers and communities behind these tools.
+
+BASE SYSTEM:
+  - Debian GNU/Linux Project (https://www.debian.org)
+  - Linux Kernel Developers (https://kernel.org)
+  - GNU Project (https://www.gnu.org)
+  - systemd Developers (https://systemd.io)
+
+DESKTOP ENVIRONMENT:
+  - XFCE Development Team (https://xfce.org)
+  - GTK+ Team (https://gtk.org)
+  - Papirus Icon Theme (https://github.com/PapirusDevelopmentTeam)
+
+SECURITY TOOLS:
+
+Information Gathering:
+  - Nmap Security Scanner (https://nmap.org) - Gordon Lyon (Fyodor)
+  - Masscan (https://github.com/robertdavidgraham/masscan)
+  - Amass (https://github.com/OWASP/Amass) - OWASP
+  - theHarvester (https://github.com/laramies/theHarvester)
+  - Recon-ng (https://github.com/lanmaster53/recon-ng)
+
+Vulnerability Analysis:
+  - Nikto (https://cirt.net/Nikto2)
+  - Nuclei (https://nuclei.projectdiscovery.io) - ProjectDiscovery
+  - SQLMap (https://sqlmap.org)
+  - WPScan (https://wpscan.com)
+
+Web Application Testing:
+  - Burp Suite (https://portswigger.net) - PortSwigger
+  - OWASP ZAP (https://www.zaproxy.org) - OWASP
+  - ffuf (https://github.com/ffuf/ffuf)
+  - Gobuster (https://github.com/OJ/gobuster)
+
+Password Cracking:
+  - Hashcat (https://hashcat.net)
+  - John the Ripper (https://www.openwall.com/john/)
+  - Hydra (https://github.com/vanhauser-thc/thc-hydra)
+
+Exploitation:
+  - Metasploit Framework (https://www.metasploit.com) - Rapid7
+  - ExploitDB (https://www.exploit-db.com) - Offensive Security
+  - CrackMapExec (https://github.com/byt3bl33d3r/CrackMapExec)
+
+Network Analysis:
+  - Wireshark (https://wireshark.org)
+  - Bettercap (https://www.bettercap.org)
+  - Responder (https://github.com/lgandx/Responder)
+  - Impacket (https://github.com/SecureAuthCorp/impacket)
+
+Forensics:
+  - Autopsy (https://www.autopsy.com)
+  - Sleuth Kit (https://www.sleuthkit.org)
+  - Volatility (https://www.volatilityfoundation.org)
+
+Reverse Engineering:
+  - Ghidra (https://ghidra-sre.org) - NSA
+  - Radare2 (https://rada.re)
+  - GDB (https://www.gnu.org/software/gdb/)
+
+Defensive Security:
+  - Snort (https://www.snort.org) - Cisco
+  - Suricata (https://suricata.io) - OISF
+  - ClamAV (https://www.clamav.net) - Cisco
+
+SPECIAL THANKS:
+  - Kali Linux Project (https://www.kali.org) - Offensive Security
+  - ParrotOS (https://www.parrotsec.org)
+  - BlackArch Linux (https://blackarch.org)
+  - The entire open-source security community
+
+================================================================================
+                         LICENSING NOTE
+================================================================================
+
+All third-party tools are distributed under their respective open-source
+licenses. Please refer to individual tool documentation for specific license
+information.
+
+Alphha Security OS original components (build system, custom tools, branding)
+are licensed under the BSD 3-Clause License.
+
+================================================================================
+
+Thank you to everyone who has contributed to the open-source security ecosystem.
+Your work makes projects like Alphha Security OS possible.
+
+================================================================================

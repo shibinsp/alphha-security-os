@@ -1,0 +1,537 @@
+#!/bin/bash
+#===============================================================================
+#
+#          FILE: alphha-install
+#
+#         USAGE: sudo alphha-install
+#
+#   DESCRIPTION: TUI installer for Alphha Security OS
+#                Guides users through the installation process.
+#
+#        AUTHOR: Alphha Team
+#     COPYRIGHT: Copyright (c) 2026 Alphha Team
+#       LICENSE: BSD-3-Clause
+#       VERSION: 1.0.0
+#
+#===============================================================================
+
+set -euo pipefail
+
+readonly VERSION="1.0.0"
+readonly OS_NAME="Alphha Security OS"
+readonly CODENAME="Sentinel"
+
+# Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[0;33m'
+readonly CYAN='\033[0;36m'
+readonly NC='\033[0m'
+
+# Installation variables
+TARGET_DISK=""
+HOSTNAME="alphha-sec"
+USERNAME="sentinel"
+PASSWORD=""
+ROOT_PASSWORD=""
+TIMEZONE="UTC"
+LOCALE="en_US.UTF-8"
+KEYBOARD="us"
+ENCRYPT_DISK=false
+INSTALL_MODE="full"
+
+# Dialog dimensions
+DIALOG_HEIGHT=20
+DIALOG_WIDTH=70
+
+log_info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
+#-------------------------------------------------------------------------------
+# Pre-flight checks
+#-------------------------------------------------------------------------------
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        dialog --title "Error" --msgbox "This installer must be run as root.\n\nPlease run: sudo alphha-install" 10 50
+        exit 1
+    fi
+}
+
+check_dependencies() {
+    local deps=(dialog parted mkfs.ext4 mkfs.vfat debootstrap)
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &>/dev/null; then
+            dialog --title "Error" --msgbox "Missing dependency: $dep\n\nPlease install it and try again." 10 50
+            exit 1
+        fi
+    done
+}
+
+check_uefi() {
+    if [[ -d /sys/firmware/efi ]]; then
+        return 0  # UEFI
+    else
+        return 1  # BIOS
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Welcome screen
+#-------------------------------------------------------------------------------
+show_welcome() {
+    dialog --title "Welcome to $OS_NAME Installer" \
+        --yes-label "Install" \
+        --no-label "Exit" \
+        --yesno "
+    Welcome to the $OS_NAME $VERSION ($CODENAME) installer!
+
+    This installer will guide you through the installation process.
+
+    IMPORTANT: This will ERASE all data on the selected disk!
+
+    Make sure you have:
+    - Backed up important data
+    - At least 20GB of free disk space
+    - Internet connection (optional but recommended)
+
+    Copyright (c) 2026 Alphha Team
+
+    Continue with installation?" $DIALOG_HEIGHT $DIALOG_WIDTH
+
+    return $?
+}
+
+#-------------------------------------------------------------------------------
+# Installation mode selection
+#-------------------------------------------------------------------------------
+select_install_mode() {
+    INSTALL_MODE=$(dialog --title "Installation Mode" \
+        --menu "Select installation type:" $DIALOG_HEIGHT $DIALOG_WIDTH 6 \
+        "full" "Full Installation - All security tools (~6 GB)" \
+        "offensive" "Offensive Security - Penetration testing (~4 GB)" \
+        "defensive" "Defensive Security - Blue team tools (~3 GB)" \
+        "forensics" "Forensic Workstation - Digital forensics (~3 GB)" \
+        "minimal" "Minimal CLI - Core tools only (~1.5 GB)" \
+        "custom" "Custom - Select individual categories" \
+        3>&1 1>&2 2>&3)
+
+    return $?
+}
+
+#-------------------------------------------------------------------------------
+# Disk selection
+#-------------------------------------------------------------------------------
+select_disk() {
+    # Get list of disks
+    local disks=()
+    while IFS= read -r line; do
+        local disk=$(echo "$line" | awk '{print $1}')
+        local size=$(echo "$line" | awk '{print $2}')
+        local model=$(echo "$line" | awk '{$1=$2=""; print $0}' | xargs)
+        disks+=("$disk" "$size - $model")
+    done < <(lsblk -d -n -o NAME,SIZE,MODEL | grep -E "^(sd|nvme|vd)" || true)
+
+    if [[ ${#disks[@]} -eq 0 ]]; then
+        dialog --title "Error" --msgbox "No suitable disks found!" 8 40
+        exit 1
+    fi
+
+    TARGET_DISK=$(dialog --title "Select Disk" \
+        --menu "Select the disk to install $OS_NAME:\n\nWARNING: All data will be erased!" \
+        $DIALOG_HEIGHT $DIALOG_WIDTH 10 \
+        "${disks[@]}" \
+        3>&1 1>&2 2>&3)
+
+    TARGET_DISK="/dev/$TARGET_DISK"
+
+    # Confirm disk selection
+    dialog --title "Confirm Disk" \
+        --yes-label "Continue" \
+        --no-label "Go Back" \
+        --yesno "You selected: $TARGET_DISK\n\nALL DATA ON THIS DISK WILL BE PERMANENTLY ERASED!\n\nAre you absolutely sure?" 12 50
+
+    return $?
+}
+
+#-------------------------------------------------------------------------------
+# Encryption option
+#-------------------------------------------------------------------------------
+ask_encryption() {
+    dialog --title "Disk Encryption" \
+        --yes-label "Yes, encrypt" \
+        --no-label "No encryption" \
+        --yesno "Do you want to encrypt the root partition?\n\nEncryption provides additional security but requires entering a passphrase at every boot.\n\nRecommended for laptops and portable devices." 12 50
+
+    if [[ $? -eq 0 ]]; then
+        ENCRYPT_DISK=true
+    else
+        ENCRYPT_DISK=false
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# User configuration
+#-------------------------------------------------------------------------------
+configure_user() {
+    # Hostname
+    HOSTNAME=$(dialog --title "Hostname" \
+        --inputbox "Enter hostname for this system:" 8 50 "$HOSTNAME" \
+        3>&1 1>&2 2>&3)
+
+    # Username
+    USERNAME=$(dialog --title "Username" \
+        --inputbox "Enter username for the primary user:" 8 50 "$USERNAME" \
+        3>&1 1>&2 2>&3)
+
+    # User password
+    while true; do
+        PASSWORD=$(dialog --title "User Password" \
+            --insecure \
+            --passwordbox "Enter password for user '$USERNAME':" 8 50 \
+            3>&1 1>&2 2>&3)
+
+        local password_confirm=$(dialog --title "Confirm Password" \
+            --insecure \
+            --passwordbox "Confirm password:" 8 50 \
+            3>&1 1>&2 2>&3)
+
+        if [[ "$PASSWORD" == "$password_confirm" ]]; then
+            break
+        else
+            dialog --title "Error" --msgbox "Passwords do not match. Please try again." 8 40
+        fi
+    done
+
+    # Root password
+    dialog --title "Root Password" \
+        --yes-label "Same as user" \
+        --no-label "Different" \
+        --yesno "Use the same password for root?" 8 40
+
+    if [[ $? -eq 0 ]]; then
+        ROOT_PASSWORD="$PASSWORD"
+    else
+        while true; do
+            ROOT_PASSWORD=$(dialog --title "Root Password" \
+                --insecure \
+                --passwordbox "Enter root password:" 8 50 \
+                3>&1 1>&2 2>&3)
+
+            local root_confirm=$(dialog --title "Confirm Root Password" \
+                --insecure \
+                --passwordbox "Confirm root password:" 8 50 \
+                3>&1 1>&2 2>&3)
+
+            if [[ "$ROOT_PASSWORD" == "$root_confirm" ]]; then
+                break
+            else
+                dialog --title "Error" --msgbox "Passwords do not match. Please try again." 8 40
+            fi
+        done
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Timezone and locale
+#-------------------------------------------------------------------------------
+configure_locale() {
+    # Timezone selection
+    local timezones=(
+        "UTC" "Coordinated Universal Time"
+        "America/New_York" "Eastern Time (US)"
+        "America/Chicago" "Central Time (US)"
+        "America/Denver" "Mountain Time (US)"
+        "America/Los_Angeles" "Pacific Time (US)"
+        "Europe/London" "London, UK"
+        "Europe/Paris" "Central European Time"
+        "Europe/Berlin" "Berlin, Germany"
+        "Asia/Tokyo" "Tokyo, Japan"
+        "Asia/Shanghai" "Shanghai, China"
+        "Asia/Kolkata" "India Standard Time"
+        "Australia/Sydney" "Sydney, Australia"
+    )
+
+    TIMEZONE=$(dialog --title "Timezone" \
+        --menu "Select your timezone:" $DIALOG_HEIGHT $DIALOG_WIDTH 10 \
+        "${timezones[@]}" \
+        3>&1 1>&2 2>&3)
+
+    # Keyboard layout
+    local keyboards=(
+        "us" "US English"
+        "uk" "UK English"
+        "de" "German"
+        "fr" "French"
+        "es" "Spanish"
+        "it" "Italian"
+        "pt" "Portuguese"
+        "ru" "Russian"
+        "jp" "Japanese"
+    )
+
+    KEYBOARD=$(dialog --title "Keyboard Layout" \
+        --menu "Select keyboard layout:" $DIALOG_HEIGHT $DIALOG_WIDTH 10 \
+        "${keyboards[@]}" \
+        3>&1 1>&2 2>&3)
+}
+
+#-------------------------------------------------------------------------------
+# Installation confirmation
+#-------------------------------------------------------------------------------
+confirm_installation() {
+    local encrypt_status="No"
+    [[ "$ENCRYPT_DISK" == true ]] && encrypt_status="Yes"
+
+    dialog --title "Confirm Installation" \
+        --yes-label "Install" \
+        --no-label "Cancel" \
+        --yesno "Please review your settings:
+
+    Disk:          $TARGET_DISK
+    Mode:          $INSTALL_MODE
+    Hostname:      $HOSTNAME
+    Username:      $USERNAME
+    Timezone:      $TIMEZONE
+    Keyboard:      $KEYBOARD
+    Encryption:    $encrypt_status
+
+    The installation will now begin.
+    This may take 15-30 minutes.
+
+    Continue?" 20 50
+
+    return $?
+}
+
+#-------------------------------------------------------------------------------
+# Disk partitioning
+#-------------------------------------------------------------------------------
+partition_disk() {
+    dialog --title "Partitioning" --infobox "Partitioning disk $TARGET_DISK..." 5 50
+
+    # Wipe existing partitions
+    wipefs -a "$TARGET_DISK" &>/dev/null || true
+    dd if=/dev/zero of="$TARGET_DISK" bs=1M count=10 &>/dev/null || true
+
+    if check_uefi; then
+        # GPT/UEFI partitioning
+        parted -s "$TARGET_DISK" mklabel gpt
+        parted -s "$TARGET_DISK" mkpart ESP fat32 1MiB 513MiB
+        parted -s "$TARGET_DISK" set 1 esp on
+        parted -s "$TARGET_DISK" mkpart primary ext4 513MiB 1537MiB
+        parted -s "$TARGET_DISK" mkpart primary ext4 1537MiB 100%
+    else
+        # MBR/BIOS partitioning
+        parted -s "$TARGET_DISK" mklabel msdos
+        parted -s "$TARGET_DISK" mkpart primary ext4 1MiB 1025MiB
+        parted -s "$TARGET_DISK" set 1 boot on
+        parted -s "$TARGET_DISK" mkpart primary ext4 1025MiB 100%
+    fi
+
+    sleep 2
+    partprobe "$TARGET_DISK"
+}
+
+#-------------------------------------------------------------------------------
+# Format partitions
+#-------------------------------------------------------------------------------
+format_partitions() {
+    dialog --title "Formatting" --infobox "Formatting partitions..." 5 50
+
+    if check_uefi; then
+        mkfs.vfat -F32 "${TARGET_DISK}1"  # EFI
+        mkfs.ext4 -F "${TARGET_DISK}2"    # Boot
+        if [[ "$ENCRYPT_DISK" == true ]]; then
+            echo -n "$PASSWORD" | cryptsetup luksFormat --type luks2 "${TARGET_DISK}3" -
+            echo -n "$PASSWORD" | cryptsetup open "${TARGET_DISK}3" cryptroot -
+            mkfs.btrfs -f /dev/mapper/cryptroot
+        else
+            mkfs.btrfs -f "${TARGET_DISK}3"
+        fi
+    else
+        mkfs.ext4 -F "${TARGET_DISK}1"    # Boot
+        if [[ "$ENCRYPT_DISK" == true ]]; then
+            echo -n "$PASSWORD" | cryptsetup luksFormat --type luks2 "${TARGET_DISK}2" -
+            echo -n "$PASSWORD" | cryptsetup open "${TARGET_DISK}2" cryptroot -
+            mkfs.btrfs -f /dev/mapper/cryptroot
+        else
+            mkfs.btrfs -f "${TARGET_DISK}2"
+        fi
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Mount partitions
+#-------------------------------------------------------------------------------
+mount_partitions() {
+    dialog --title "Mounting" --infobox "Mounting partitions..." 5 50
+
+    local root_part
+    if [[ "$ENCRYPT_DISK" == true ]]; then
+        root_part="/dev/mapper/cryptroot"
+    else
+        if check_uefi; then
+            root_part="${TARGET_DISK}3"
+        else
+            root_part="${TARGET_DISK}2"
+        fi
+    fi
+
+    mount "$root_part" /mnt
+
+    # Create btrfs subvolumes
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@snapshots
+    umount /mnt
+
+    # Mount with subvolumes
+    mount -o subvol=@,compress=zstd "$root_part" /mnt
+    mkdir -p /mnt/{home,boot,.snapshots}
+    mount -o subvol=@home,compress=zstd "$root_part" /mnt/home
+    mount -o subvol=@snapshots,compress=zstd "$root_part" /mnt/.snapshots
+
+    if check_uefi; then
+        mount "${TARGET_DISK}2" /mnt/boot
+        mkdir -p /mnt/boot/efi
+        mount "${TARGET_DISK}1" /mnt/boot/efi
+    else
+        mount "${TARGET_DISK}1" /mnt/boot
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Install base system
+#-------------------------------------------------------------------------------
+install_base() {
+    (
+        echo "10" ; echo "# Running debootstrap..."
+        debootstrap --arch=amd64 --variant=minbase bookworm /mnt http://deb.debian.org/debian >/dev/null 2>&1
+
+        echo "30" ; echo "# Configuring APT sources..."
+        cat > /mnt/etc/apt/sources.list << EOF
+deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+EOF
+
+        echo "40" ; echo "# Mounting virtual filesystems..."
+        mount --bind /dev /mnt/dev
+        mount --bind /dev/pts /mnt/dev/pts
+        mount -t proc proc /mnt/proc
+        mount -t sysfs sysfs /mnt/sys
+        if check_uefi; then
+            mount --bind /sys/firmware/efi/efivars /mnt/sys/firmware/efi/efivars 2>/dev/null || true
+        fi
+
+        echo "50" ; echo "# Installing packages..."
+        chroot /mnt apt-get update >/dev/null 2>&1
+        DEBIAN_FRONTEND=noninteractive chroot /mnt apt-get install -y \
+            linux-image-amd64 linux-headers-amd64 firmware-linux \
+            systemd systemd-sysv dbus sudo locales keyboard-configuration \
+            grub-efi-amd64 efibootmgr btrfs-progs cryptsetup \
+            network-manager zsh git vim curl wget >/dev/null 2>&1
+
+        echo "70" ; echo "# Configuring system..."
+
+        # Hostname
+        echo "$HOSTNAME" > /mnt/etc/hostname
+        cat > /mnt/etc/hosts << EOF
+127.0.0.1   localhost
+127.0.1.1   $HOSTNAME
+::1         localhost ip6-localhost ip6-loopback
+EOF
+
+        # Locale
+        echo "en_US.UTF-8 UTF-8" > /mnt/etc/locale.gen
+        chroot /mnt locale-gen >/dev/null 2>&1
+        echo "LANG=en_US.UTF-8" > /mnt/etc/default/locale
+
+        # Timezone
+        chroot /mnt ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+
+        # Keyboard
+        echo "KEYMAP=$KEYBOARD" > /mnt/etc/vconsole.conf
+
+        echo "80" ; echo "# Creating user..."
+        chroot /mnt useradd -m -s /bin/zsh -G sudo,adm,cdrom,audio,video,plugdev,netdev "$USERNAME"
+        echo "${USERNAME}:${PASSWORD}" | chroot /mnt chpasswd
+        echo "root:${ROOT_PASSWORD}" | chroot /mnt chpasswd
+
+        echo "90" ; echo "# Installing bootloader..."
+        if check_uefi; then
+            chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=alphha >/dev/null 2>&1
+        else
+            chroot /mnt grub-install "$TARGET_DISK" >/dev/null 2>&1
+        fi
+        chroot /mnt update-grub >/dev/null 2>&1
+
+        # Generate fstab
+        echo "95" ; echo "# Generating fstab..."
+        genfstab -U /mnt > /mnt/etc/fstab 2>/dev/null || true
+
+        echo "100" ; echo "# Installation complete!"
+    ) | dialog --title "Installing $OS_NAME" --gauge "Starting installation..." 8 70 0
+}
+
+#-------------------------------------------------------------------------------
+# Cleanup and finish
+#-------------------------------------------------------------------------------
+cleanup() {
+    umount -R /mnt 2>/dev/null || true
+    [[ "$ENCRYPT_DISK" == true ]] && cryptsetup close cryptroot 2>/dev/null || true
+}
+
+finish_installation() {
+    dialog --title "Installation Complete" \
+        --yes-label "Reboot" \
+        --no-label "Exit" \
+        --yesno "
+    $OS_NAME has been successfully installed!
+
+    Your system is ready to use.
+
+    Default credentials:
+    Username: $USERNAME
+    Password: (the password you set)
+
+    Would you like to reboot now?" 15 50
+
+    cleanup
+
+    if [[ $? -eq 0 ]]; then
+        reboot
+    else
+        clear
+        echo -e "${GREEN}Installation complete!${NC}"
+        echo "Run 'reboot' when ready."
+    fi
+}
+
+#-------------------------------------------------------------------------------
+# Main
+#-------------------------------------------------------------------------------
+main() {
+    check_root
+    check_dependencies
+
+    show_welcome || exit 0
+    select_install_mode || exit 0
+    select_disk || exit 0
+    ask_encryption
+    configure_user || exit 0
+    configure_locale || exit 0
+    confirm_installation || exit 0
+
+    partition_disk
+    format_partitions
+    mount_partitions
+    install_base
+
+    finish_installation
+}
+
+# Run with error handling
+trap cleanup EXIT
+main

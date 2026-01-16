@@ -1,0 +1,48 @@
+# Alphha Security OS - Git Ignore
+# Copyright (c) 2026 Alphha Team
+
+# Build outputs
+output/
+*.iso
+*.qcow2
+*.img
+*.tar.gz
+*.sha256
+*.md5
+
+# Temporary build directories
+/tmp/
+*.tmp
+*~
+
+# Editor files
+*.swp
+*.swo
+*.bak
+.vscode/
+.idea/
+*.sublime-*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+*.cache
+__pycache__/
+*.pyc
+
+# Secrets (never commit these)
+*.key
+*.pem
+*.crt
+secrets/
+.env
