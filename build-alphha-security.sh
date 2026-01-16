@@ -587,14 +587,19 @@ install_packages() {
     log_step "Installing packages for variant: $VARIANT..."
 
     local packages
-    packages=$(get_packages_for_variant)
+    # Get packages and convert newlines to spaces
+    packages=$(get_packages_for_variant | tr '\n' ' ')
+
+    # Write package list to a file in chroot to avoid argument issues
+    echo "$packages" > "$WORK_DIR/chroot/tmp/packages.txt"
 
     # Install packages in chroot
-    chroot "$WORK_DIR/chroot" bash -c "
+    chroot "$WORK_DIR/chroot" bash -c '
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y --no-install-recommends $packages 2>&1 || true
-    "
+        xargs -a /tmp/packages.txt apt-get install -y --no-install-recommends 2>&1 || true
+        rm -f /tmp/packages.txt
+    '
 
     log_success "Package installation completed"
 }
@@ -653,15 +658,35 @@ EOF
 create_default_user() {
     log_step "Creating default user..."
 
-    chroot "$WORK_DIR/chroot" bash -c "
-        # Create sentinel user
-        useradd -m -s /bin/zsh -G sudo,adm,cdrom,audio,video,plugdev,netdev sentinel
-        echo 'sentinel:alphha' | chpasswd
+    chroot "$WORK_DIR/chroot" bash -c '
+        # Determine shell (prefer zsh if available, fallback to bash)
+        if [ -x /bin/zsh ]; then
+            USER_SHELL=/bin/zsh
+        else
+            USER_SHELL=/bin/bash
+        fi
+
+        # Create groups if they dont exist
+        for grp in sudo adm cdrom audio video plugdev netdev; do
+            getent group $grp >/dev/null 2>&1 || groupadd $grp 2>/dev/null || true
+        done
+
+        # Create sentinel user with available groups
+        GROUPS="sudo,adm"
+        for grp in cdrom audio video plugdev netdev; do
+            getent group $grp >/dev/null 2>&1 && GROUPS="$GROUPS,$grp"
+        done
+
+        useradd -m -s "$USER_SHELL" -G "$GROUPS" sentinel 2>/dev/null || true
+
+        # Set password
+        echo "sentinel:alphha" | chpasswd
 
         # Allow passwordless sudo for live session
-        echo 'sentinel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/sentinel
+        mkdir -p /etc/sudoers.d
+        echo "sentinel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/sentinel
         chmod 440 /etc/sudoers.d/sentinel
-    "
+    '
 
     log_success "Default user created: sentinel (password: alphha)"
 }
