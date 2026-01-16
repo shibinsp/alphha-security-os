@@ -1,0 +1,89 @@
+name: Build Alphha Security OS ISO
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Build variant'
+        required: true
+        default: 'minimal'
+        type: choice
+        options:
+          - minimal
+          - full
+          - offensive
+          - defensive
+          - forensics
+      upload_release:
+        description: 'Upload to release v1.0.0'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          df -h
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debootstrap \
+            xorriso \
+            squashfs-tools \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools \
+            isolinux \
+            syslinux-common \
+            curl \
+            wget \
+            gpg
+
+      - name: Build ISO
+        run: |
+          sudo ./build-alphha-security.sh --variant ${{ github.event.inputs.variant }} --output ./output
+          ls -la ./output/
+
+      - name: Generate checksums
+        run: |
+          cd output
+          for f in *.iso; do
+            sha256sum "$f" > "${f}.sha256"
+            md5sum "$f" > "${f}.md5"
+          done
+          cat *.sha256
+
+      - name: Upload ISO as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: alphha-security-${{ github.event.inputs.variant }}-iso
+          path: |
+            output/*.iso
+            output/*.sha256
+            output/*.md5
+          retention-days: 7
+
+      - name: Upload to Release
+        if: ${{ github.event.inputs.upload_release == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for f in output/*.iso output/*.sha256 output/*.md5; do
+            echo "Uploading $f..."
+            gh release upload v1.0.0 "$f" --clobber || true
+          done
