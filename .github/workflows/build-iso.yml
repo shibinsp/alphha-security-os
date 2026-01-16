@@ -57,6 +57,7 @@ jobs:
       - name: Build ISO
         run: |
           sudo ./build-alphha-security.sh --variant ${{ github.event.inputs.variant }} --output ./output
+          sudo chown -R $(id -u):$(id -g) ./output
           ls -la ./output/
 
       - name: Generate checksums
