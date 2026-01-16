@@ -373,7 +373,6 @@ kismet
 hcxtools
 metasploit-framework
 exploitdb
-searchsploit
 crackmapexec
 impacket-scripts
 wireshark
@@ -394,7 +393,6 @@ ltrace
 strace
 binwalk
 foremost
-volatility3
 autopsy
 sleuthkit
 EOF
@@ -429,10 +427,8 @@ get_forensics_packages() {
     cat << 'EOF'
 autopsy
 sleuthkit
-volatility3
 foremost
 scalpel
-photorec
 testdisk
 binwalk
 bulk-extractor
@@ -442,7 +438,6 @@ ewf-tools
 afflib-tools
 guymager
 yara
-plaso
 hashdeep
 ssdeep
 EOF
@@ -730,7 +725,8 @@ fs.protected_symlinks = 1
 fs.suid_dumpable = 0
 EOF
 
-    # SSH hardening
+    # SSH hardening (create directory if it doesn't exist)
+    mkdir -p "$WORK_DIR/chroot/etc/ssh/sshd_config.d"
     cat > "$WORK_DIR/chroot/etc/ssh/sshd_config.d/alphha-hardening.conf" << 'EOF'
 # Alphha Security OS - SSH Hardening
 PermitRootLogin no

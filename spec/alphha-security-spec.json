@@ -224,12 +224,9 @@
       "exploitation": [
         "metasploit-framework",
         "exploitdb",
-        "searchsploit",
         "beef-xss",
         "set",
-        "crackmapexec",
-        "evilginx2",
-        "gophish"
+        "crackmapexec"
       ],
 
       "post_exploitation": [
@@ -249,10 +246,8 @@
       "forensics": [
         "autopsy",
         "sleuthkit",
-        "volatility3",
         "foremost",
         "scalpel",
-        "photorec",
         "testdisk",
         "binwalk",
         "bulk-extractor",
@@ -260,9 +255,7 @@
         "dc3dd",
         "dcfldd",
         "ewf-tools",
-        "afflib-tools",
-        "plaso",
-        "log2timeline"
+        "afflib-tools"
       ],
 
       "reverse_engineering": [
