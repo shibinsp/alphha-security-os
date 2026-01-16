@@ -65,6 +65,20 @@
 </td>
 <td align="center">
 
+### 🔴 Offensive Edition
+
+**Red Team tools** - Pentesting & Ethical Hacking + XFCE Desktop
+
+[![Download Offensive ISO](https://img.shields.io/badge/Download_Offensive_ISO-1.58_GB-ff0040?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-offensive-amd64.iso)
+
+[![SHA256](https://img.shields.io/badge/SHA256-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-offensive-amd64.iso.sha256)
+[![MD5](https://img.shields.io/badge/MD5-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-offensive-amd64.iso.md5)
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
 ### 💻 Minimal Edition
 
 **Core security tools** - CLI focused, lightweight
@@ -73,6 +87,15 @@
 
 [![SHA256](https://img.shields.io/badge/SHA256-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso.sha256)
 [![MD5](https://img.shields.io/badge/MD5-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso.md5)
+
+</td>
+<td align="center">
+
+### 🔵 Defensive Edition
+
+**Blue Team tools** - SIEM, IDS & Monitoring *(Coming Soon)*
+
+[![Coming Soon](https://img.shields.io/badge/Coming_Soon-Building-blue?style=for-the-badge&logo=linux&logoColor=white)](#)
 
 </td>
 </tr>
@@ -250,10 +273,10 @@ alphha-update --all  # Update system and all tools
 | Edition | Description | Size | Tools | Status |
 |:-------:|:------------|:----:|:-----:|:------:|
 | **Full** | All security tools (offensive + defensive + XFCE) | 1.6 GB | 100+ | ✅ Available |
+| **Offensive** | Penetration testing focused + XFCE | 1.58 GB | 80+ | ✅ Available |
 | **Minimal** | CLI only, core tools | 951 MB | 50+ | ✅ Available |
-| **Offensive** | Penetration testing focused | ~2 GB | 80+ | 🔜 Coming Soon |
-| **Defensive** | Blue team & SIEM tools | ~2 GB | 60+ | 🔜 Coming Soon |
-| **Forensics** | Digital forensics & IR | ~2 GB | 50+ | 🔜 Coming Soon |
+| **Defensive** | Blue team & SIEM tools | ~1.5 GB | 60+ | 🔄 Building |
+| **Forensics** | Digital forensics & IR | ~1.5 GB | 50+ | 🔜 Coming Soon |
 
 ---
 
@@ -400,7 +423,7 @@ Alphha Security OS comes **hardened by default**:
 
 - [x] Full edition ISO release
 - [x] Minimal edition ISO release
-- [ ] Offensive edition ISO release
+- [x] Offensive edition ISO release
 - [ ] Defensive edition ISO release
 - [ ] Forensics edition ISO release
 - [ ] ARM64 support (Raspberry Pi)
