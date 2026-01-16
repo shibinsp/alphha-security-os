@@ -832,6 +832,7 @@ install_custom_tools() {
 
     mkdir -p "$WORK_DIR/chroot/opt/alphha-toolkit"
     mkdir -p "$WORK_DIR/chroot/usr/local/bin"
+    mkdir -p "$WORK_DIR/chroot/usr/share/backgrounds/alphha"
 
     # Copy custom tools from source
     if [[ -d "$SCRIPT_DIR/tools/alphha-toolkit" ]]; then
@@ -846,6 +847,32 @@ install_custom_tools() {
     if [[ -f "$SCRIPT_DIR/tools/alphha-update" ]]; then
         cp "$SCRIPT_DIR/tools/alphha-update" "$WORK_DIR/chroot/usr/local/bin/"
         chmod +x "$WORK_DIR/chroot/usr/local/bin/alphha-update"
+    fi
+
+    # Copy wallpaper
+    if [[ -f "$SCRIPT_DIR/branding/alphha-wallpaper.png" ]]; then
+        cp "$SCRIPT_DIR/branding/alphha-wallpaper.png" "$WORK_DIR/chroot/usr/share/backgrounds/alphha/"
+        log_info "Wallpaper installed"
+    fi
+
+    # Set default XFCE wallpaper (for non-minimal editions)
+    if [[ "$VARIANT" != "minimal" ]]; then
+        mkdir -p "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml"
+        cat > "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml" << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-desktop" version="1.0">
+  <property name="backdrop" type="empty">
+    <property name="screen0" type="empty">
+      <property name="monitorVirtual1" type="empty">
+        <property name="workspace0" type="empty">
+          <property name="last-image" type="string" value="/usr/share/backgrounds/alphha/alphha-wallpaper.png"/>
+          <property name="image-style" type="int" value="5"/>
+        </property>
+      </property>
+    </property>
+  </property>
+</channel>
+EOF
     fi
 
     log_success "Custom tools installed"
