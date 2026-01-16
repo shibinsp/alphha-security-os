@@ -581,18 +581,53 @@ EOF
 install_packages() {
     log_step "Installing packages for variant: $VARIANT..."
 
-    local packages
-    # Get packages and convert newlines to spaces
-    packages=$(get_packages_for_variant | tr '\n' ' ')
-
-    # Write package list to a file in chroot to avoid argument issues
-    echo "$packages" > "$WORK_DIR/chroot/tmp/packages.txt"
-
-    # Install packages in chroot
+    # First, install critical core packages that MUST succeed
+    log_info "Installing critical system packages..."
     chroot "$WORK_DIR/chroot" bash -c '
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        xargs -a /tmp/packages.txt apt-get install -y --no-install-recommends 2>&1 || true
+        apt-get install -y --no-install-recommends \
+            linux-image-amd64 \
+            linux-headers-amd64 \
+            systemd \
+            systemd-sysv \
+            dbus \
+            sudo \
+            locales \
+            console-setup \
+            keyboard-configuration \
+            grub-efi-amd64 \
+            grub-pc-bin \
+            efibootmgr \
+            network-manager \
+            ca-certificates \
+            gnupg \
+            curl \
+            wget \
+            openssh-server \
+            openssh-client
+    '
+
+    # Verify kernel was installed
+    if ! ls "$WORK_DIR/chroot/boot/vmlinuz-"* > /dev/null 2>&1; then
+        log_error "CRITICAL: Linux kernel not installed!"
+        exit 1
+    fi
+    log_success "Critical packages installed"
+
+    # Now install remaining packages (allow failures for unavailable packages)
+    local packages
+    packages=$(get_packages_for_variant | tr '\n' ' ')
+    echo "$packages" > "$WORK_DIR/chroot/tmp/packages.txt"
+
+    log_info "Installing additional packages (some may be unavailable)..."
+    chroot "$WORK_DIR/chroot" bash -c '
+        export DEBIAN_FRONTEND=noninteractive
+        # Install packages one by one to allow partial success
+        while read -r pkg; do
+            [ -z "$pkg" ] && continue
+            apt-get install -y --no-install-recommends "$pkg" 2>/dev/null || echo "WARN: Package not available: $pkg"
+        done < /tmp/packages.txt
         rm -f /tmp/packages.txt
     '
 
