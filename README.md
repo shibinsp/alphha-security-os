@@ -102,6 +102,20 @@
 
 </td>
 </tr>
+<tr>
+<td align="center" colspan="2">
+
+### 🔬 Forensics Edition
+
+**Digital Forensics & IR** - Autopsy, Sleuthkit, Binwalk + XFCE Desktop
+
+[![Download Forensics ISO](https://img.shields.io/badge/Download_Forensics_ISO-1.24_GB-9400d3?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-forensics-amd64.iso)
+
+[![SHA256](https://img.shields.io/badge/SHA256-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-forensics-amd64.iso.sha256)
+[![MD5](https://img.shields.io/badge/MD5-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-forensics-amd64.iso.md5)
+
+</td>
+</tr>
 </table>
 
 <p align="center">
@@ -278,8 +292,8 @@ alphha-update --all  # Update system and all tools
 | **Full** | All security tools (offensive + defensive + XFCE) | 1.6 GB | 100+ | ✅ Available |
 | **Offensive** | Penetration testing focused + XFCE | 1.58 GB | 80+ | ✅ Available |
 | **Defensive** | Blue team & SIEM tools + XFCE | 1.28 GB | 60+ | ✅ Available |
+| **Forensics** | Digital forensics & IR + XFCE | 1.24 GB | 50+ | ✅ Available |
 | **Minimal** | CLI only, core tools | 951 MB | 50+ | ✅ Available |
-| **Forensics** | Digital forensics & IR | ~1.5 GB | 50+ | 🔜 Coming Soon |
 
 ---
 
@@ -428,7 +442,7 @@ Alphha Security OS comes **hardened by default**:
 - [x] Minimal edition ISO release
 - [x] Offensive edition ISO release
 - [x] Defensive edition ISO release
-- [ ] Forensics edition ISO release
+- [x] Forensics edition ISO release
 - [ ] ARM64 support (Raspberry Pi)
 - [ ] Cloud images (AWS, GCP, Azure)
 - [ ] Docker container
