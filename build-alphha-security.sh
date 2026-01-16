@@ -615,19 +615,26 @@ install_packages() {
     fi
     log_success "Critical packages installed"
 
-    # Now install remaining packages (allow failures for unavailable packages)
-    local packages
-    packages=$(get_packages_for_variant | tr '\n' ' ')
-    echo "$packages" > "$WORK_DIR/chroot/tmp/packages.txt"
+    # Now install remaining packages
+    # Keep one package per line for proper iteration
+    get_packages_for_variant > "$WORK_DIR/chroot/tmp/packages.txt"
 
-    log_info "Installing additional packages (some may be unavailable)..."
+    log_info "Installing additional packages..."
     chroot "$WORK_DIR/chroot" bash -c '
         export DEBIAN_FRONTEND=noninteractive
-        # Install packages one by one to allow partial success
-        while read -r pkg; do
-            [ -z "$pkg" ] && continue
-            apt-get install -y --no-install-recommends "$pkg" 2>/dev/null || echo "WARN: Package not available: $pkg"
-        done < /tmp/packages.txt
+
+        # First attempt: install all at once (fast path)
+        if xargs -a /tmp/packages.txt apt-get install -y --no-install-recommends 2>/dev/null; then
+            echo "All packages installed successfully"
+        else
+            echo "Some packages failed, retrying individually..."
+            # Second attempt: install packages one by one for those that failed
+            while IFS= read -r pkg || [ -n "$pkg" ]; do
+                pkg=$(echo "$pkg" | xargs)
+                [ -z "$pkg" ] && continue
+                apt-get install -y --no-install-recommends "$pkg" 2>/dev/null || echo "WARN: Unavailable: $pkg"
+            done < /tmp/packages.txt
+        fi
         rm -f /tmp/packages.txt
     '
 
