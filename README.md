@@ -53,11 +53,23 @@
 <tr>
 <td align="center">
 
-### 🖥️ Alphha Security OS v1.0.0
+### 🔥 Full Edition (Recommended)
 
-**Minimal Edition** - Core security tools, CLI focused
+**All security tools** - Offensive + Defensive + Forensics + XFCE Desktop
 
-[![Download ISO](https://img.shields.io/badge/Download_ISO-951_MB-00ff41?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso)
+[![Download Full ISO](https://img.shields.io/badge/Download_Full_ISO-1.6_GB-00ff41?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-full-amd64.iso)
+
+[![SHA256](https://img.shields.io/badge/SHA256-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-full-amd64.iso.sha256)
+[![MD5](https://img.shields.io/badge/MD5-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-full-amd64.iso.md5)
+
+</td>
+<td align="center">
+
+### 💻 Minimal Edition
+
+**Core security tools** - CLI focused, lightweight
+
+[![Download Minimal ISO](https://img.shields.io/badge/Download_Minimal_ISO-951_MB-0d1117?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso)
 
 [![SHA256](https://img.shields.io/badge/SHA256-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso.sha256)
 [![MD5](https://img.shields.io/badge/MD5-Checksum-gray?style=flat-square)](https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso.md5)
@@ -153,11 +165,14 @@ Designed for:
 ### Boot from USB
 
 ```bash
-# Download the ISO
-wget https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso
+# Download the Full Edition ISO (recommended)
+wget https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-full-amd64.iso
+
+# Or download Minimal Edition (CLI only)
+# wget https://github.com/shibinsp/alphha-security-os/releases/download/v1.0.0/alphha-security-1.0.0-minimal-amd64.iso
 
 # Write to USB (replace /dev/sdX with your USB device)
-sudo dd if=alphha-security-1.0.0-minimal-amd64.iso of=/dev/sdX bs=4M status=progress
+sudo dd if=alphha-security-1.0.0-full-amd64.iso of=/dev/sdX bs=4M status=progress
 sync
 ```
 
@@ -232,13 +247,13 @@ alphha-update --all  # Update system and all tools
 
 ## 📦 Editions
 
-| Edition | Description | Size | Tools |
-|:-------:|:------------|:----:|:-----:|
-| **Full** | All security tools (offensive + defensive) | ~6 GB | 500+ |
-| **Offensive** | Penetration testing focused | ~4 GB | 300+ |
-| **Defensive** | Blue team & SIEM tools | ~3 GB | 200+ |
-| **Forensics** | Digital forensics & IR | ~3 GB | 150+ |
-| **Minimal** | CLI only, core tools | ~1 GB | 100+ |
+| Edition | Description | Size | Tools | Status |
+|:-------:|:------------|:----:|:-----:|:------:|
+| **Full** | All security tools (offensive + defensive + XFCE) | 1.6 GB | 100+ | ✅ Available |
+| **Minimal** | CLI only, core tools | 951 MB | 50+ | ✅ Available |
+| **Offensive** | Penetration testing focused | ~2 GB | 80+ | 🔜 Coming Soon |
+| **Defensive** | Blue team & SIEM tools | ~2 GB | 60+ | 🔜 Coming Soon |
+| **Forensics** | Digital forensics & IR | ~2 GB | 50+ | 🔜 Coming Soon |
 
 ---
 
@@ -383,7 +398,11 @@ Alphha Security OS comes **hardened by default**:
 
 ## 🗺️ Roadmap
 
-- [ ] Full edition ISO release
+- [x] Full edition ISO release
+- [x] Minimal edition ISO release
+- [ ] Offensive edition ISO release
+- [ ] Defensive edition ISO release
+- [ ] Forensics edition ISO release
 - [ ] ARM64 support (Raspberry Pi)
 - [ ] Cloud images (AWS, GCP, Azure)
 - [ ] Docker container
